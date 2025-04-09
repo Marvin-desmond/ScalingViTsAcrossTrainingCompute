@@ -33,7 +33,11 @@ class ScaledDotProductAttention():
         4. (batch * n_heads * seq_len * seq_len) @ (batch * n_heads * seq_len * head_dim)
            ===> batch * n_heads * seq_len * head_dim
         """
-        pass
+        assert d_out % n_heads == 0, "d_out must be divisible by number of heads"
+        self.n_heads = n_heads
+        self.d_out = d_out 
+        self.head_dim = int(d_out / n_heads) 
+
         
     def __call__(self, x):
         assert len(x.shape) == 3, "batch of embedding sequence expected"
