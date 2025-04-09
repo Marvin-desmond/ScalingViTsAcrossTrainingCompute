@@ -1,4 +1,5 @@
 .DS_Store
-article
+article/*
+!article/ScalingViT.pdf
 tests
 models
