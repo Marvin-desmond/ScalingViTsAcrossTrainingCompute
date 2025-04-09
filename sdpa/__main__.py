@@ -37,7 +37,10 @@ class ScaledDotProductAttention():
         self.n_heads = n_heads
         self.d_out = d_out 
         self.head_dim = int(d_out / n_heads) 
-
+        self.Wq = np.random.randn(d_in, d_out)
+        self.Wk = np.random.randn(d_in, d_out)
+        self.Wv = np.random.randn(d_in, d_out)
+        self.Wout = np.random.randn(d_out, d_out)
         
     def __call__(self, x):
         assert len(x.shape) == 3, "batch of embedding sequence expected"
