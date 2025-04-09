@@ -52,6 +52,10 @@ class ScaledDotProductAttention():
         Q = Q.reshape((batch, seq_len, self.n_heads, self.head_dim))
         K = K.reshape((batch, seq_len, self.n_heads, self.head_dim))
         V = V.reshape((batch, seq_len, self.n_heads, self.head_dim))
+        # make each head across the batches have dim (seq_len,head_dim)
+        Q = Q.transpose((0,2,1,3))
+        K = K.transpose((0,2,1,3))
+        V = V.transpose((0,2,1,3))
 
 
 if __name__ == "__main__":
