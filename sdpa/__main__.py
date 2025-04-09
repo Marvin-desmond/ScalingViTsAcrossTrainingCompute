@@ -44,6 +44,11 @@ class ScaledDotProductAttention():
         
     def __call__(self, x):
         assert len(x.shape) == 3, "batch of embedding sequence expected"
+        batch, seq_len, d_in = x.shape
+        Q = x @ self.Wq # batch * seq_len * d_out
+        K = x @ self.Wk
+        V = x @ self.Wv
+
 
 if __name__ == "__main__":
     pass
