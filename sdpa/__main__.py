@@ -48,6 +48,10 @@ class ScaledDotProductAttention():
         Q = x @ self.Wq # batch * seq_len * d_out
         K = x @ self.Wk
         V = x @ self.Wv
+        # introduce multiple heads
+        Q = Q.reshape((batch, seq_len, self.n_heads, self.head_dim))
+        K = K.reshape((batch, seq_len, self.n_heads, self.head_dim))
+        V = V.reshape((batch, seq_len, self.n_heads, self.head_dim))
 
 
 if __name__ == "__main__":
