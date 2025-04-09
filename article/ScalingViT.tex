@@ -893,13 +893,10 @@ to build the Llama-2 model graph and load the weights for the 7B variant.
 It is a decoder-only architecture, as is most State of The Art common LLMs.
 Why is that?\\
 Well, decoder-only architectures worked very well for next token prediction and translation tasks, 
-and were easier to train.
+and were easier to train. And so, they picked up as the {\it de facto} baselines for most current
+outstanding models.
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% mask = torch.triu(torch.ones_like(scaled_scores), diagonal=1)
-% scaled_scores_masked = scaled_scores.masked_fill_(mask.bool(), -torch.inf)
-% weights = torch.softmax(scaled_scores_masked, dim=-1)
 % \end{lstlisting}
-even better relations.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -907,4 +904,22 @@ even better relations.
   \scriptsize 
 \end{minipage}
 \end{figure}
+% ==================================================
+\pagebreak
+% PAGE 11
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{NEW PAGE PENDING .......}\\
+lorem ipsum
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+\end{minipage}
+\end{figure}
+% ==================================================
 \end{document}
