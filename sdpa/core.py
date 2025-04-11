@@ -49,14 +49,14 @@ class ScaledDotProductAttention(nn.Module):
         self.n_heads = n_heads
         self.d_out = d_out 
         self.head_dim = int(d_out / n_heads) 
-        self.Wq = nn.Linear(d_in, d_out)
-        self.Wk = nn.Linear(d_in, d_out)
-        self.Wv = nn.Linear(d_in, d_out)
-        self.Wout = nn.Linear(d_out, d_out)
-        self.mask = torch.triu(torch.ones(context_window, context_window), diagonal=1)
+        self.Wq = nn.Linear(d_in, d_out, bias)
+        self.Wk = nn.Linear(d_in, d_out, bias)
+        self.Wv = nn.Linear(d_in, d_out, bias)
+        self.Wout = nn.Linear(d_out, d_out, bias)
+        mask = torch.triu(torch.ones(context_window, context_window), diagonal=1)
+        self.register_buffer("mask", mask)
         
     def __call__(self, x):
-        import numpy.ma as ma 
         assert len(x.shape) == 3, "batch of embedding sequence expected"
         batch, seq_len, d_in = x.shape
         Q = self.Wq(x) # batch * seq_len * d_out
@@ -94,7 +94,6 @@ if __name__ == "__main__":
     context_window = 1024
     baseSdpa = ScaledDotProductAttention(d_in, d_out, n_heads, context_window)
     baseSdpa = baseSdpa.to(device)
-    baseSdpa.mask = baseSdpa.mask.to(device)
 
     input_tensor = torch.rand(batch, seq_len, d_in, device=device) 
     out = baseSdpa(input_tensor)
