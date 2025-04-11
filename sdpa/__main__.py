@@ -68,15 +68,18 @@ class ScaledDotProductAttention():
         weights = softmax(masked_scores)
         # compute step 4
         vectors = weights @ V
+        vectors = vectors.transpose((0,2,1,3))
         vectors = vectors.reshape((batch,seq_len,self.d_out))
         context_vectors = vectors @ self.Wout
-        print(context_vectors.shape)        
+        return context_vectors        
 
 if __name__ == "__main__":
+    batch = 9
     d_in = 768
     d_out = 768
     n_heads = 12
     seq_len = 10
     baseSdpa = ScaledDotProductAttention(d_in, d_out, n_heads)
-    baseSdpa(np.random.randn(1, seq_len, d_in))
+    out = baseSdpa(np.random.randn(batch, seq_len, d_in))
+    print(out.shape)
 
