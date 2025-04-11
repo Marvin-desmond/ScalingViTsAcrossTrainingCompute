@@ -2,6 +2,15 @@ import torch
 import torch.nn as nn 
 softmax = nn.functional.softmax
 
+
+device = torch.device(
+            "cuda"
+            if torch.cuda.is_available() else (
+                "mps" if torch.backends.mps.is_available()
+                else "cpu"
+            )
+        )
+
 class ScaledDotProductAttention(nn.Module):
     def __init__(self, d_in, d_out, n_heads, context_window, bias=False):
         super(ScaledDotProductAttention, self).__init__()
@@ -70,16 +79,24 @@ class ScaledDotProductAttention(nn.Module):
         weights = softmax(masked_scores, dim=-1)
         # compute step 4
         vectors = weights @ V
+        vectors = vectors.transpose(1,2)
         vectors = vectors.contiguous().view(batch,seq_len,self.d_out)
         context_vectors = self.Wout(vectors)
-        print(context_vectors.shape)        
+        return context_vectors
+    
 
 if __name__ == "__main__":
+    batch = 8
     d_in = 768
     d_out = 768
     n_heads = 12
     seq_len = 10
     context_window = 1024
     baseSdpa = ScaledDotProductAttention(d_in, d_out, n_heads, context_window)
-    baseSdpa(torch.randn(1, seq_len, d_in))
+    baseSdpa = baseSdpa.to(device)
+    baseSdpa.mask = baseSdpa.mask.to(device)
+
+    input_tensor = torch.rand(batch, seq_len, d_in, device=device) 
+    out = baseSdpa(input_tensor)
+    print(out.shape)
 
