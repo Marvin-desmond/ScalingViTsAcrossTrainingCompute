@@ -91,6 +91,7 @@
   framexbottommargin=1pt, 
   frame=tb, framerule=0pt,
 }
+
 \lstdefinestyle{C}{
     belowcaptionskip=1\baselineskip,
     breaklines=true,
@@ -131,6 +132,7 @@
 \urlstyle{same}
 \usepackage{fontawesome}
 \begin{document}
+\include{codesintikz.tex}
 \linespread{1.2}\selectfont
 \title{GPGPU Programming with CUDA}
 \author{Marvin}
@@ -573,7 +575,7 @@ a picture is worth a thousand words! Let it do the talking!
     % explain expand nodes
     \node [RIR, draw=black,dashed,fill=sblue, anchor=west] at ($(v.east)+(0.5,0)$) {
         \parbox{2.5cm}{\tiny \centering W\textsubscript{q}, W\textsubscript{k}, and W\textsubscript{v} 
-        are nn.Linear instances of dimensions \\d\_in x d\_out
+        are nn.Linear instances of dimensions \\(d\_out,d\_in)
         }
     };
     % arrows from Q to Qproj
@@ -894,7 +896,102 @@ It is a decoder-only architecture, as is most State of The Art common LLMs.
 Why is that?\\
 Well, decoder-only architectures worked very well for next token prediction and translation tasks, 
 and were easier to train. And so, they picked up as the {\it de facto} baselines for most current
-outstanding models.
+outstanding models.\\
+Earlier, we had the graph for the Multi-head Attention, let's add codes to it to map it 
+to implementation.\\
+\begin{tikzpicture}[
+    BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
+    RIR/.style={draw=black,thick,rectangle,rounded corners,inner sep=5pt, inner ysep=5pt}
+    ]
+    \tikzstyle{every node}=[font=\virgil\scriptsize]
+    \node (ref) at (0,0){}; % needs be set as global coordinate
+    % node for embeddings
+    \node[RIR,fill=sstart] (head) at ($(ref.east)+(-10, -1.1)$) {\parbox{4cm}{
+        \centering embeddings\\{
+            \usebox{\codebox}
+            }}};
+    % explaining embeddings
+    \node [RIR, fill=sorange, draw=orange,dashed] (lrich) at ($(head)+(4, 0)$) {\parbox{2.5cm}{\tiny \centering high-dimensional latent rich token representation as input}};
+    \draw [->,thick,red,>=stealth] (lrich.west) to [out=150,in=30] (head.east);
+    % three arrows extengin from ebeddings
+    \draw[->, thick,>=stealth] (head.south) -- node[name=midh,inner sep=0, outer sep=0]{} node[pos=0.25,right]{{\tiny embeddings denoted as x}} ++ (0, -0.8) node[name=endl1, inner sep=0]{};
+    \draw[->, thick,>=stealth] (midh) -- ++ (5,0) -- ++ (0, -0.3) node[name=endl2, inner sep=0]{};
+    \draw[->, thick,>=stealth] (midh) -- ++ (-5,0) -- ++ (0, -0.3) node[name=endl3, inner sep=0]{};
+    % nodes for matrix multiplication
+    \node[RIR,fill=sblue, anchor=north] (q) at (endl3) {
+        \parbox{3.8cm}{\centering Q=W\textsubscript{q}(x)\\
+        \usebox{\codeq}
+        }};
+    \node[RIR,fill=sblue, anchor=north] (k) at (endl1) {
+        \parbox{3.8cm}{
+            \centering K=W\textsubscript{k}(x)
+            \usebox{\codek}
+        }};
+    \node[RIR,fill=sblue, anchor=north] (v) at (endl2) {
+        \parbox{3.8cm}{\centering
+        V=W\textsubscript{v}(x)\\
+        \usebox{\codev}
+    }};
+    % explain expand nodes
+    \node [RIR, draw=black,dashed,fill=sblue, anchor=west] at ($(v.east)+(0.5,0)$) {
+        \parbox{2.5cm}{\tiny \centering W\textsubscript{q}, W\textsubscript{k}, and W\textsubscript{v} 
+        are nn.Linear instances of dimensions \\(d\_out,d\_in)
+        }
+    };
+    % arrows from Q to Qproj
+    \draw[->, thick, >=stealth] (q.south) -- node[left]{\textcolor{black!50}{\parbox{2cm}{\tiny Batch x Seq\_len x d\_out}}} ++ (0,-0.7) node[name=q1]{};
+    
+    % nodes for projections of the q, k, and v h times
+    \node[RIR, fill=syellow, anchor=north] (qproj) at (q1) {
+    \parbox{3.5cm}{\tiny \centering linearly project Q h times\\\usebox{\projectq}}};
+    \draw let \p1 = (qproj.north), \p2 = (k.south) in node[RIR, fill=syellow, anchor=north] (kproj) at (\x2, \y1) {
+        \parbox{3.5cm}{\tiny \centering linearly project K h times\\\usebox{\projectk}}
+    };
+    \draw let \p1 = (qproj.north), \p2 = (v.south) in node[RIR, fill=syellow, anchor=north] (vproj) at (\x2, \y1) {
+        \parbox{3.5cm}{\tiny \centering linearly project V h times\\\usebox{\projectv}}
+    };
+    % arrows from K, V to K proj, V proj respectively
+    \draw[->, thick, >=stealth] (k.south) -- node[left]{\textcolor{black!50}{\tiny \parbox{1.8cm}{Batch x Seq\_len\\ x d\_out}}} (kproj.north) node[name=k1]{};
+    \draw[->, thick, >=stealth] (v.south) -- node[left]{\textcolor{black!50}{\tiny Batch x Seq\_len x d\_out}} (vproj.north) node[name=v1]{};
+    % explain expand nodes
+    \node [RIR, draw=black,dashed,fill=syellow, anchor=west] at ($(vproj.east)+(0.2,-0.2)$) {
+        \parbox{3cm}{\tiny \centering h=8 for the original Transformers architecture\\
+        d\_out \% h == 0 must be met\\
+        head\_dim = d\_out // h}
+    };
+    % SDPA node
+    \node[RIR,fill=sgreen, draw=OliveGreen] (sdpa) at ($(kproj.south)+(0, -1.8)$) {Scaled Dot Product Attention};
+    % arrows from projection nodes to SDPA
+    \draw[->,thick,>=stealth] (qproj.south) |- node[left]{\textcolor{black!50}{
+        \parbox{2cm}{\centering \tiny Batch x Seq\_len\\ x h x head\_dim}
+        }
+    } ($(sdpa.north)+(-1,0.3)$) -- ($(sdpa.north)+(-1,0)$);
+    \draw[->,thick,>=stealth] (kproj.south) |- node[pos=0.3,left]{\textcolor{black!50}{
+        \parbox{3cm}{\centering \tiny Batch x Seq\_len x h x head\_dim}
+        }
+    } ($(sdpa.north)+(0,0.3)$) -- (sdpa.north);
+    \draw[->,thick,>=stealth] (vproj.south) |- node[pos=0.3,left]{\textcolor{black!50}{
+        \tiny Batch x Seq\_len x h x head\_dim}
+    } ($(sdpa.north)+(1,0.3)$) -- ($(sdpa.north)+(1,0)$);
+    % output from SDPA node
+    \node [RIR,anchor=north, fill=spurple] (outheads) at ($(sdpa.south)+(0,-0.8)$){
+        \parbox{3.5cm}{
+            \centering concatenate the heads\\
+            \usebox{\concatheads}}};
+    % arrow from SDPA to heads node
+    \draw[->,thick,>=stealth] (sdpa.south) -- node[left,pos=0.5]{
+        \parbox{3.5cm}{\tiny \centering output heads\quad head\textsubscript{1},...,head\textsubscript{h}\\
+        \textcolor{black!50}{Batch x Seq\_len x h x head\_dim}
+    }} (outheads.north);
+    % Linear matrix multiplication 
+    \node[RIR,fill=sblue,anchor=north] (lmm) at ($(outheads.south)+(0,-0.5)$) {
+        \parbox{4cm}{\centering
+      out = W\textsubscript{o}(concat\_h)\\
+      \usebox{\projectout}
+    }};
+    % arrow from concat to linear mm
+    \draw[->,thick, >=stealth](outheads.south) -- node[pos=0.5,left]{\textcolor{black!50}{\tiny Batch x Seq\_len x d\_out}} (lmm.north);
+\end{tikzpicture}
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
