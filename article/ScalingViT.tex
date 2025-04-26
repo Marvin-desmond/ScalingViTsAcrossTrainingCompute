@@ -328,8 +328,8 @@ and the embedding dimensions, \bandi{D}, being 3072.
     Let's making a few things clear, 
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
         \item previous position encodings were done before the MHA block, this is done within it.
-        \item RoPE are only applied to the queries and the keys, not the values. 
-        \item RoPE are only applied after the vectors $\vec{q}$ and $\vec{k}$ have been multiplied by the 
+        \item RoPE is only applied to the queries and the keys, not the values. 
+        \item RoPE is only applied after the vectors $\vec{q}$ and $\vec{k}$ have been multiplied by the 
         \bandi{W} matrix in the attention mechanism, while in the vanilla transformer they're applied before.
       \end{itemize}
     \vspace{1em}
