@@ -2,18 +2,16 @@ import torch
 import torch.nn as nn 
 softmax = nn.functional.softmax
 
+import sys 
+sys.path.append("../")
+from posenc_freqs import precompute_freqs_cis
 
-device = torch.device(
-            "cuda"
-            if torch.cuda.is_available() else (
-                "mps" if torch.backends.mps.is_available()
-                else "cpu"
-            )
-        )
+device = torch.device("cuda" if torch.cuda.is_available() else (
+            "mps" if torch.backends.mps.is_available() else "cpu"))
 
-class ScaledDotProductAttention(nn.Module):
+class MHAttention(nn.Module):
     def __init__(self, d_in, d_out, n_heads, context_window, bias=False):
-        super(ScaledDotProductAttention, self).__init__()
+        super(MHAttention, self).__init__()
         """
         Scaled Dot Product Attention
         ============================
@@ -92,10 +90,10 @@ if __name__ == "__main__":
     n_heads = 12
     seq_len = 10
     context_window = 1024
-    baseSdpa = ScaledDotProductAttention(d_in, d_out, n_heads, context_window)
-    baseSdpa = baseSdpa.to(device)
+    baseMHA = MHAttention(d_in, d_out, n_heads, context_window)
+    baseMHA = baseMHA.to(device)
 
     input_tensor = torch.rand(batch, seq_len, d_in, device=device) 
-    out = baseSdpa(input_tensor)
+    out = baseMHA(input_tensor)
     print(out.shape)
 
