@@ -15,4 +15,4 @@ ${OUT}: ${IN}
 	make clean
     
 clean:
-	rm *.xml *.aux *.blg *.bbl *.log *.bib *.fls *.fdb_latexmk
+	rm *.xml *.aux *.blg *.out *.log *.bib *.fls *.gz
