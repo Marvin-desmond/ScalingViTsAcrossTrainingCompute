@@ -14,8 +14,9 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[backend=bibtex, language=auto, autolang=other, bibencoding=utf8]{biblatex}
 \usepackage{fontspec}
-\usepackage{media9}
+\usepackage{csquotes}
 \usepackage{geometry} % Formats the paper size, orientation, and margins
+
 \geometry{
  a4paper,
 %  total={8.5in,11in},
@@ -119,6 +120,7 @@
 % \newcommand{\sidecite}[1]{\scriptsize\ \textcolor{blue}{$ \mathbf{^{#1}}$}\normalsize}
 \newcommand{\sidecite}[1]{\textsuperscript{\textcolor{blue}{\textbf{\scriptsize#1}}}}
 \newcommand{\customtitle}[1]{\fontsize{14}{8}\textcolor{xtitle}{\textit{#1}}\\}
+\newcommand{\itred}[1]{\scriptsize \textcolor{red}{\it #1}}
 \usepackage{hyperref}
 \hypersetup{
     colorlinks=true,
@@ -824,7 +826,7 @@ print(out.shape) # torch.Size([7, 4096])
 \end{lstlisting}
 Nice! Now onto {\it Add \& Norm} layer, which from the paper, is a Layer normalization that computes\\
 \vspace{-1.5em}
-$$\text{LayerNorm}(x  + \text{Multihead(}x, x, x))$$
+$$\text{LayerNorm}(x  + \text{Multihead(}x))$$
 where $x$ is basically the same sequence (as an embedding) input to the $Q, K \& V$. This layer hence
 is a residual connection necessary for enabling smooth gradient flow through the model and retaining 
 information from the original sequence prior to the multi-head attention. This is simply implemented as 
@@ -994,6 +996,243 @@ to implementation.\\
 \end{tikzpicture}
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
+But wait! what about the RoPE implementation, remember that as has been discussed earlier,
+positional encodings should be somewhere in the above disjointed\sidecite{18} graph of a code.
+Let's figure out where?
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{18}$ disjointed for it does not exist in a {nn.Module} class with the updatable weights in the init
+  part of the class  
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 11
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Recap on Rotational Positional Encoding}\\
+    \begin{tikzpicture}
+        \node (intro) {
+\begin{lstlisting}[language=python,style=python]
+def precompute_freqs_cis(d, context_len, theta = 10_000, device = "gpu"):
+    #
+    #
+    assert d % 2 == 0, "dim must be divisible by 2"
+    #
+    i_s = torch.arange(0,d,2)[:(d//2)].float()
+    theta_s = theta ** (- i_s / d).to(device)
+    m = torch.arange(context_len, device=device)
+    freqs = torch.outer(m, theta_s).float()
+    freqs_cis = torch.polar(torch.ones_like(freqs), freqs)
+    return freqs_cis
+\end{lstlisting}
+        };
+        \node (fAE) at ($(intro.north)+(2.9,-2.7)$){};
+        % first arrow for the assertion
+        \draw [->,red,>=stealth] ($(intro.north)+(4.5,-1.8)$) 
+        node[name=fAS,right]{\parbox{3cm}{\centering \itred{As the paper\textsuperscript{\sidecite{9}} says, \enquote{\ldots to any $x_i\in R^d$ where d is even\ldots}}}} to 
+        [out=180,in=10] (fAE.south);
+        % second arrow for the i_s
+        \draw [->,red,>=stealth] ($(intro.north)+(3.3,-4.5)$) 
+        node[name=sabN]{} to 
+        [out=180,in=-5] ($(intro.north)+(1.9,-4.05)$);
+        \node[anchor=west] at (sabN) {\itred{
+             \parbox{3cm}{\raggedright 
+             $i_s=2(i-1)$ for $i\in\{1,2,\ldots,d/2\}$ 
+             }}
+        };
+        % third arrow for the theta_s
+        \draw [->,red,>=stealth] ($(intro.north)+(3.5,-5.5)$) to 
+        [out=180,in=-5] ($(intro.north)+(1.7,-4.65)$);
+        \node[anchor=west] at ($(intro.north)+(3.5,-5.5)$) {\itred{
+             \parbox{6cm}{\raggedright 
+             $10000^{-i_s/d}$ which expands to $10000^{-2(i-1)/d}$
+             }}
+        };
+        % fourth arrow for the outer product
+        \draw [->,red,>=stealth] ($(intro.north)+(3.5,-7.5)$) to 
+        [out=180,in=-5] ($(intro.north)+(1.4,-5.75)$);
+        \node[anchor=west] at ($(intro.north)+(3.5,-7.5)$) {\itred{
+             \parbox{6cm}{\raggedright 
+             outer product of $\vec{m}$ \& $\vec{\theta}$ to give
+             \vspace{-2.5em}\\
+             \tiny
+             \[
+             \begin{pmatrix}
+                m_1\theta_1,\quad m_1\theta_2,\quad \ldots,\quad m_1\theta_{d/2-1},\quad m_1\theta_{d/2}\\
+                m_2\theta_1,\quad m_2\theta_2,\quad \ldots,\quad m_2\theta_{d/2-1},\quad m_2\theta_{d/2}\\
+                \mathbf{\vdots}\hspace{3.5em} \qquad \vdots\hspace{3.5em}\ldots\hspace{3.5em}\vdots\hspace{3.5em}\vdots\\
+                m_{\text{cl}}\theta_1, m_{\text{cl}-1}\theta_2,\ldots, m_{\text{cl}-1}\theta_{d/2-1}, m_{\text{cl}-1}\theta_{d/2}\\
+              \end{pmatrix}
+              \]
+             }}
+        };
+         % fifth arrow for the polar computation
+         \draw [->,red,>=stealth] ($(intro.north west)+(5.8,-8.5)$) to 
+         [out=180,in=-5] ($(intro.north west)+(2.8,-6.9)$);
+         \node[anchor=west] at ($(intro.north west)+(5.8,-8.5)$) {\itred{
+              \parbox{6cm}{\raggedright 
+              elementwise mapping i.e.\\
+              \tiny
+              $m_1\theta_1 \Rightarrow \cos(m_1\theta_1)+i\sin(m_1\theta_1)$\\
+              \scriptsize
+              where the ones are the absolute value arguments
+              }}
+         };
+\end{tikzpicture}
+% \begin{tikzpicture}
+% \node (intro) {
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% def reshape_for_broadcast(freqs_cis: torch.Tensor, x: torch.Tensor):
+%     ndim = x.ndim
+%     assert 0 <= 1 < ndim
+%     assert freqs_cis.shape == (x.shape[1], x.shape[-1])
+%     shape = [d if i == 1 or i == ndim - 1 else 1 for i, d in enumerate(x.shape)]
+%     return freqs_cis.view(*shape)
+% \end{lstlisting}
+% };
+% \end{tikzpicture}
+\begin{tikzpicture}
+    \node (intro) {
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def apply_rotary_embs(x, freqs_cis, device):
+    #
+    #
+    x_c = torch.view_as_complex(
+        x.float().reshape(*x.shape[:-1], -1, 2)
+    ) 
+    #
+    f_c = freqs_cis.unsqueeze(0).unsqueeze(2)
+    #
+    #
+    x_rotated = x_c * f_c
+    #
+    x_out = torch.view_as_real(x_rotated)
+    #
+    x_out = x_out.reshape(*x.shape)
+    return x_out.type_as(x).to(device)
+\end{lstlisting}
+    };
+    % first arrow to expand dims
+    \draw [->,red,>=stealth] ($(intro.north east)+(1.5,-2.6)$) to 
+    ($(intro.north east)+(-0.5,-2.6)$);
+    \node[anchor=west] at ($(intro.north east)+(1.5,-2.6)$) {\itred{
+            \parbox{6cm}{\raggedright 
+            dynamically expands the last dimension \\
+            (\ldots,d1) to \big(\ldots,$\frac{d1}{2}$,2\big) where d1 is even
+            }}
+    };
+    % second arrow to convert to complex
+    \draw [->,red,>=stealth] ($(intro.north east)+(2.5,-0.4)$) 
+    node[name=send]{} to 
+    [out=180,in=0] ($(intro.north)+(1.7,-2.1)$);
+    \node[anchor=west] at (send) {\itred{
+            \parbox{6cm}{\raggedright
+            takes each group of 2s of elements,\dots\newline
+            [x, y],\newline
+            [m, n],
+            \ldots\\
+            to single elements of\\
+            x+yj,\\m+jn\ldots
+            }}
+    };
+    % third arrow 
+    \draw [->,red,>=stealth] ($(intro.north west)+(3.5,-3.5)$) node[name=se]{} to 
+    [out=180,in=-5] ($(intro.north west)+(2.1,-2.2)$);
+    \node[anchor=west] at (se) {\itred{
+            \parbox{6cm}{\raggedright 
+            dims transformed from $\left(\ldots,d\right)$\quad to\quad $\left(\ldots,\frac{d}{2}\right)$
+            }}
+    };
+    % fourth arrow
+    \draw [->,red,>=stealth] ($(intro.south)+(5.5,1)$) node[name=se]{} to 
+    [out=180,in=-5] ($(intro.south)+(3.5,2.05)$);
+    \node[anchor=west] at (se) {\itred{
+            \parbox{6cm}{\raggedright 
+            reverses the effect of torch.view\_as\_complex
+            }}
+    };
+\end{tikzpicture}
+With the knowledge of the implementation of the rotational positional encodings, 
+in the graph for the MultiHead Attention, let's focus on the part after the transformation 
+to the dimensions 
+\vspace{-1em}
+\begin{gather*}
+    [\text{\it batch} \times \text{\it seq\_len} \times \text{\it n\_heads} \times \text{\it head\_dim}]
+\end{gather*}
+\vspace{-3em}\\
+but before the high-dimensional transpose to get the batch of heads each with dimensions (seq\_len,head\_dim)\sidecite{19}.
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{19}$Reminder that the rotational transformation is to be applied to the queries and keys only and not the values
+  ({\it refer to page 4}).
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 12
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+\begin{tikzpicture}
+\node (intro) {
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+# Already defined earlier 
+dim=4096; n_heads=32; context_len=2048
+Q,K,V=... # each dims being (Batch,SeqLen,Heads,HDim)
+m_theta_polar_tensor = precompute_freqs_cis(dim//n_heads, context_len*2,"cpu")
+m_theta_polar_seq = m_theta_polar_tensor[:seq_len]
+Q=apply_rotary_emb(Q,m_theta_polar_seq)
+K=apply_rotary_emb(K,m_theta_polar_seq)
+\end{lstlisting}
+};
+\end{tikzpicture}
+\customtext{xtitle}{0em}{Unwrapping the Transformer Block}\\
+As much as the original Transformer does the normalization as
+\vspace{-1em}
+$$\text{LayerNorm}(x  + \text{Multihead(}x))$$
+\vspace{-2.7em}\\
+Llama2 does a prenormalization given by
+\vspace{-1em}
+\begin{align*}
+    x_n & = \text{RMSNorm}(x)\\
+    \text{out} & = x  + \text{Multihead(}x_n)\\
+    & \text{\small where}\\
+    & \text{\small RMSNorm($x$)}=\frac{x_i}{\text{\small RMS}(x)}*\gamma_i\\
+    & \text{\small RMS($x$)} = \sqrt{\epsilon+\frac{1}{n}\sum_{i=1}^nx_i^2}
+\end{align*}
+\vspace{-1.5em}\\
+which works out in code as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class RMSNorm(torch.nn.Module):
+    def __init__(self, dim: int, eps: float = 1e-5):
+        super().__init__()
+        self.eps = eps
+        self.weight = nn.Parameter(torch.ones(dim))
+    def forward(self, x):
+        means = x.pow(2).mean(-1, keepdim=True)
+        norm_x = x * torch.rsqrt(means + self.eps)
+        return (norm_x * self.weight).to(x.dtype)
+
+rmsNorm=RMSNorm(dim) # dim=4096
+x_norm=rmsNorm(x) # x => embeddings => (Batch,SeqLen,Dim)
+# some mhAttention already instantiated called below 
+attn_out=mhAttention(x_norm)
+# then add 
+out = x + attn_out
+\end{lstlisting}
+
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -1003,11 +1242,11 @@ to implementation.\\
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE 11
+% PAGE 12
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{NEW PAGE PENDING .......}\\
+    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
 lorem ipsum
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
@@ -1020,3 +1259,4 @@ lorem ipsum
 \end{figure}
 % ==================================================
 \end{document}
+
