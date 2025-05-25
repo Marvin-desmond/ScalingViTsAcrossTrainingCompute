@@ -2,15 +2,8 @@ import torch
 import torch.nn as nn 
 softmax = nn.functional.softmax
 
-import sys 
-sys.path.append("../")
-from posenc_freqs import precompute_freqs_cis
-
-device = torch.device("cuda" if torch.cuda.is_available() else (
-            "mps" if torch.backends.mps.is_available() else "cpu"))
-
 class MHAttention(nn.Module):
-    def __init__(self, d_in, d_out, n_heads, context_window, bias=False):
+    def __init__(self, d_in, d_out, n_heads, context_window, bias=False, device="cpu"):
         super(MHAttention, self).__init__()
         """
         Scaled Dot Product Attention
@@ -44,14 +37,15 @@ class MHAttention(nn.Module):
            ===> batch * n_heads * seq_len * head_dim
         """
         assert d_out % n_heads == 0, "d_out must be divisible by number of heads"
+        self.device = device
         self.n_heads = n_heads
         self.d_out = d_out 
         self.head_dim = int(d_out / n_heads) 
-        self.Wq = nn.Linear(d_in, d_out, bias)
-        self.Wk = nn.Linear(d_in, d_out, bias)
-        self.Wv = nn.Linear(d_in, d_out, bias)
-        self.Wout = nn.Linear(d_out, d_out, bias)
-        mask = torch.triu(torch.ones(context_window, context_window), diagonal=1)
+        self.Wq = nn.Linear(d_in, d_out, bias,device=device)
+        self.Wk = nn.Linear(d_in, d_out, bias,device=device)
+        self.Wv = nn.Linear(d_in, d_out, bias,device=device)
+        self.Wout = nn.Linear(d_out, d_out, bias,device=device)
+        mask = torch.triu(torch.ones(context_window, context_window,device="mps"), diagonal=1)
         self.register_buffer("mask", mask)
         
     def __call__(self, x):
@@ -83,15 +77,16 @@ class MHAttention(nn.Module):
         return context_vectors
     
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
+    device = torch.device("cuda" if torch.cuda.is_available() else (
+               "mps" if torch.backends.mps.is_available() else "cpu"))
     batch = 8
     d_in = 768
     d_out = 768
     n_heads = 12
     seq_len = 10
     context_window = 1024
-    baseMHA = MHAttention(d_in, d_out, n_heads, context_window)
-    baseMHA = baseMHA.to(device)
+    baseMHA = MHAttention(d_in, d_out, n_heads, context_window,device=device)
 
     input_tensor = torch.rand(batch, seq_len, d_in, device=device) 
     out = baseMHA(input_tensor)
