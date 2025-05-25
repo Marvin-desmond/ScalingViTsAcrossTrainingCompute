@@ -58,9 +58,7 @@ if __name__ == "__main__":
     max_seq_len=128 
     B, S, H, D = 8, 100, n_heads, dim//n_heads
     context_window=4096 
-
     x=torch.randn(B,S,H,D)
-    print(f"INPUT {x.shape = }")
     out_1, _ = llama_apply_rotary_emb(
         x,
         x,
