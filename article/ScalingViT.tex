@@ -835,11 +835,11 @@ out_attn = multiheadAttn(x)
 out = x + out_attn
 norm_out = norm(out)
 \end{lstlisting}
-\customtext{xtitle}{0em}{What about the Feed Forward NN layer}\\
+\customtext{xtitle}{0em}{What about the Feed Forward Network layer}\\
 Always forming a crucial layer in most models, the FFN, in this case, 
-maps context rich vectors onto a higher dimension\sidecite{17} which increases learning 
-so it can model more complex relationships and also adds an activation 
-function to introduce non-linear, even better relations.
+maps context rich vectors onto a higher dimension\sidecite{17} which 
+increases learning so it can model more complex relationships and also 
+adds an activation function to introduce non-linear, even better relations.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -1230,7 +1230,8 @@ attn_out=mhAttention(x_norm)
 # then add 
 out = x + attn_out
 \end{lstlisting}
-
+with the pre-normalization done to the input to the attention block and 
+to the input to the  feed-forward networks. 
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
@@ -1240,6 +1241,50 @@ out = x + attn_out
   \scriptsize 
 \end{minipage}
 \end{figure}
+% ==================================================
+\pagebreak
+% PAGE 12
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    However, the original FFN, as can be seen from the side notes 
+    on {\it pg.9}, does two linear transformations with a 
+    ReLU \sidecite{20} activation function applied between the two 
+    linear transformations.
+    \begin{align*}
+        FFN(x, W_1, W_2, b_1, b_2) = \max(0, xW_1 + b_1)W_2 + b_2
+    \end{align*}
+    the above equation being representative of the graph computation in the 
+    linear topology on the just aforementioned page.\\
+    Llama2, the current LLM architecture of interest in implementation in this 
+    section of the article, 
+    focuses on a Linear Unit known by few as SwiGLU, a Swish-Gated Linear Unit\sidecite{21}, 
+    a variation of the Transformer FFN layer which then uses a variant of the 
+    Gated Linear Unit \sidecite{22}.
+    This leads to the FFN layer having three weight matrices as opposed to the original two.
+    
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  $^{20}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
+  {\it Deep Sparse Rectifier Neural Networks}\\
+  {\it Glorot et al. 2011}\\
+  \vspace{2em}
+  $^{21}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
+  {\it GLU Variants Improve Transformer}\\
+  {\it Noam Shazeer 2020}\\
+  \vspace{2em}
+  $^{22}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
+  {\it Gaussian Error Linear Units (GELUs)}\\
+  {\it Dan Hendrycks, Kevin Gimpel 2016}\\
+  
+  \scriptsize 
+\end{minipage}
+\end{figure}
+% ==================================================
 % ==================================================
 \pagebreak
 % PAGE 12
