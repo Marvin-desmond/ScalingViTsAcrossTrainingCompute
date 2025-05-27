@@ -8,12 +8,11 @@ import sys
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
-from utils import apply_rotary_emb
+# sys.path.append(current_dir)
 
 mha_root_dir = os.path.abspath(os.path.join(current_dir,".."))
 sys.path.append(mha_root_dir)
-from pos_freqs import precompute_freqs_cis
+from pos_freqs import precompute_freqs_cis, apply_rotary_emb
 
 device = torch.device("cuda" if torch.cuda.is_available() else (
             "mps" if torch.backends.mps.is_available() else "cpu"))
