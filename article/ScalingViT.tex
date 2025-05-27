@@ -1163,8 +1163,7 @@ def apply_rotary_embs(x, freqs_cis, device):
     };
 \end{tikzpicture}
 With the knowledge of the implementation of the rotational positional encodings, 
-let's inject it into the graph for the MultiHead Attention, focusing on the part 
-after the transformation to the dimensions 
+let's inject it into the graph for the MultiHead Attention after the transformation 
 \vspace{-1em}
 \begin{gather*}
     [\text{\it batch} \times \text{\it seq\_len} \times \text{\it n\_heads} \times \text{\it head\_dim}]
