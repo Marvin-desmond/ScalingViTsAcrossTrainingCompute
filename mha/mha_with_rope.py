@@ -17,8 +17,6 @@ from pos_freqs import precompute_freqs_cis, apply_rotary_emb
 device = torch.device("cuda" if torch.cuda.is_available() else (
             "mps" if torch.backends.mps.is_available() else "cpu"))
 
-fc = precompute_freqs_cis(64, 32_000, device=device)
-
 class MHAandRoPE(nn.Module):
     def __init__(self, d_in, d_out, n_heads, context_window, bias=False, device="cpu"):
         super(MHAandRoPE, self).__init__()
@@ -102,9 +100,9 @@ class MHAandRoPE(nn.Module):
 
 if __name__ == "__main__":
     batch = 8
-    d_in = 4096 # 768 for original paper
+    d_in = 4096 # 768 for original Transformers paper
     d_out = 4096
-    n_heads = 32 # 8 for original paper, 12 for GPT 2, 32 for Llama2
+    n_heads = 32 # 8 for original Transformers paper, 12 for GPT 2, 32 for Llama2
     seq_len = 100
     context_window = 4096
    
