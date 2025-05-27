@@ -879,10 +879,15 @@ adds an activation function to introduce non-linear, even better relations.
     RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=5pt, inner ysep=5pt}
     ]
         \node[RIR, fill=syellow] (L1) {\parbox{2cm}{\centering Linear Layer\\{\it 4096 * 11008}}};
+        \draw[>=stealth,thick,<-] (L1.north) -- ++ (0,0.5) node[pos=0.6,name=l1c,inner sep=0]{};
         \node[RIR, fill=spurple] (L2) at  ($(L1.south)+(0,-0.8)$) {\parbox{3cm}{\centering SiLU (Sigmoid Linear Unit)\\{$\text{\it SiLU}(x)=x*\sigma(x)$}}};
+        \node[RIR, fill=sorange, anchor=west] (LV) at ($(L2.east)+(0.3,0)$) {\parbox{2cm}{\centering Linear Layer\\{\it 4096 * 11008}}};
+        \draw[>=stealth,thick,->] (l1c) -| (LV.north);
         \draw[thick,->,>=stealth] (L1.south) -- (L2.north);
-        \node[RIR, fill=syellow] (L3) at  ($(L2.south)+(0,-0.8)$) {\parbox{2cm}{\centering Linear Layer\\{\it 11008 * 4096}}};
-        \draw[thick,->,>=stealth] (L2.south) -- (L3.north);
+        \draw[thick,->,>=stealth] (L2.south) -- ++ (0,-0.4) node[name=hp,pos=1.2]{$\otimes$};
+        \draw[thick,->,>=stealth] (LV.south) |- ($(hp.east)+(-0.15,0)$);
+        \node[RIR, fill=syellow] (L3) at  ($(hp.south)+(0,-0.6)$) {\parbox{2cm}{\centering Linear Layer\\{\it 11008 * 4096}}};
+        \draw[thick,->,>=stealth] ($(hp.south)+(0,0.1)$) -- (L3.north);
     \end{tikzpicture}
 \end{minipage}
 \end{figure}
@@ -1187,7 +1192,7 @@ but before the high-dimensional transpose to get the batch of heads each with di
 \node (intro) {
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 # Already defined earlier 
-dim=4096; n_heads=32; context_len=2048
+dim=4096; n_heads=32; context_len=4096
 Q,K,V=... # each dims being (Batch,SeqLen,Heads,HDim)
 m_theta_polar_tensor = precompute_freqs_cis(dim//n_heads, context_len*2,"cpu")
 m_theta_polar_seq = m_theta_polar_tensor[:seq_len]
@@ -1196,6 +1201,7 @@ K=apply_rotary_emb(K,m_theta_polar_seq)
 \end{lstlisting}
 };
 \end{tikzpicture}
+The neat implementation can be found here\sidecite{20}\\
 \customtext{xtitle}{0em}{Unwrapping the Transformer Block}\\
 As much as the original Transformer does the normalization as
 \vspace{-1em}
@@ -1243,13 +1249,13 @@ to the input to the  feed-forward networks.
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE 12
+% PAGE 13
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     However, the original FFN, as can be seen from the side notes 
     on {\it pg.9}, does two linear transformations with a 
-    ReLU \sidecite{20} activation function applied between the two 
+    ReLU \sidecite{21} activation function applied between the two 
     linear transformations.
     \begin{align*}
         FFN(x, W_1, W_2, b_1, b_2) = \max(0, xW_1 + b_1)W_2 + b_2
@@ -1258,26 +1264,90 @@ to the input to the  feed-forward networks.
     linear topology on the just aforementioned page.\\
     Llama2, the current LLM architecture of interest in implementation in this 
     section of the article, 
-    focuses on a Linear Unit known by few as SwiGLU, a Swish-Gated Linear Unit\sidecite{21}, 
+    focuses on a Linear Unit known by few as SwiGLU, a Swish-Gated Linear Unit\sidecite{22}, 
     a variation of the Transformer FFN layer which then uses a variant of the 
-    Gated Linear Unit \sidecite{22}.
+    Gated Linear Unit \sidecite{23}.
     This leads to the FFN layer having three weight matrices as opposed to the original two.
-    
+    Hence, from these clarifications, then the Transformer block is visualized as below
+\begin{tikzpicture}[
+RIR/.style={draw=black,thick,rectangle},
+AR/.style={->,thick,>=stealth}
+]
+    \scriptsize 
+    % RMS Pre-Normalization
+    \node[RIR,fill=sblue,inner sep=5pt] (prenorm) {\parbox{6cm}{\centering $\frac{x_i}{\text{\footnotesize RMS}(x)}*\gamma_i$\vspace{0.5em}\\where\vspace{0.5em}\\$\text{\footnotesize RMS}(x)=\sqrt{\epsilon+{\color{red} \underbrace{\color{black} \frac{1}{n}\sum_{i=1}^nx_i^2}}}_{}$}};
+    % MHA Block (Abstracted as already iimplemented)
+    \node[RIR,fill=sorange,anchor=south] (mha) at ($(prenorm.north)+(0,0.7)$) {\parbox{5cm}{\centering MHA for Llama 2 \textit{7B, 13B}, \\GQA for Llama 2 \textit{34B, 70B}}};
+    % Add the Attention Output and the original Input
+    \draw[<-,thick,>=stealth] (prenorm.south) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,-1) node[pos=1.2]{$x$};
+    \draw[->,thick,>=stealth] (fromx) -- ++ (-4,0) |- (mha.west);
+    % Implement the RMS Again
+    \node[RIR,anchor=south,fill=sgreen] (prermsffn) at ($(mha.north)+(0,0.7)$) {\parbox{3cm}{\centering RMS normalization again!}};
+    % WRAPPING BOX FOR SWIGLU
+    \node[RIR,anchor=south,fill=red!5,draw=red,dashed,minimum height=5.5cm,minimum width=9cm] at ($(prermsffn.north)+(2,0.4)$) {
+        \parbox[t][5.2cm][t]{9cm}{
+        \centering\virgil \fontsize{9}{10}\selectfont \hspace{3cm}Swish-Gated Linear Unit}
+        };
+    % FFN after the normalization
+    \node[RIR, fill=syellow,anchor=south] (L1) at ($(prermsffn.north)+(0,1)$) {\parbox{2cm}{\centering Linear Layer\\{\it (4096,11008)}}};
+        \node[RIR,fill=spurple,anchor=south] (L2) at  ($(L1.north)+(0,0.5)$) {\parbox{3.5cm}{\centering 
+        SiLU$(x)=x*\sigma(x)$\\
+        {with $\sigma(x)$ being the sigmoid function}\\
+        {given by} $1/(1+exp(-x))$
+        }};
+        \draw[thick,->,>=stealth] (L1.north) -- (L2.south);
+        \draw[thick,->,>=stealth] (L2.north) -- ++ (0,0.45) node[pos=1.2,name=ct,inner sep=0]{$\mathbf{\otimes}$};
+        \draw[AR] (ct.north) -- ++ (0,0.3) node[name=ctend]{};
+        \node[RIR, fill=syellow,anchor=south] (L3) at  (ctend) {\parbox{2cm}{\centering Linear Layer\\{\it (11008,4096)}}};
+    % ir linear layer
+    \node[RIR,anchor=west,fill=sorange] (irlayer) at ($(L2.east)+(0.5,-0.5)$) {\parbox{3.5cm}{
+    \centering \scriptsize (Intermediate) Linear Layer\\
+    \it (4096,11008)
+    }};
+    % ARRROWS 
+    % PreNorm to MHA
+    \draw[AR] (prenorm.north) -- (mha.south);
+    % MHA to FFN
+    \draw[AR] (mha.north) -- (prermsffn.south);
+    \draw[AR] (prermsffn.north) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.south);
+    % INPUT TO L1 TAPPED TO IR LINEAR LAYER
+    \draw[AR] (midtoir) -| (irlayer.south);
+    \draw[AR] (irlayer.north) |- ($(L2.north)+(0.1,0.5)$);
+    % L3 TO OUT
+    \draw[AR] (L3.north) -- ++ (0,0.7);
+    \node (ref) at ($(L3.north)+(0,1.1)$) {};
+    % Explain code
+    \draw [->,red,thick,>=stealth] ($(prenorm.north)+(3.5,-1.5)$) node[name=pnw]{} to 
+    [out=180,in=-5] ($(prenorm.north)+(0.85,-0.35)$);
+    \node[anchor=west] at (pnw) {
+            \parbox{5cm}{\raggedright \virgil
+            $\gamma_i$ weights initialized\\ as \normalfont \it torch.ones(Dim)
+            }
+    };
+    % explain underbrace
+        \draw [->,red,thick,>=stealth] ($(prenorm.south east)+(-0.5,-1)$) node[name=uc]{} to [out=90,in=-90] ($(prenorm.south)+(1.1,0.25)$);
+    \node[anchor=north] at (uc) {
+            \parbox{6cm}{\centering \virgil
+            as from the code before\\
+            {\normalfont \textit{x.pow(2).mean(-1,keepdims=True)}}
+            }
+    };
+\end{tikzpicture}
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright \scriptsize
-  $^{20}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
+  $^{21}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
   {\it Deep Sparse Rectifier Neural Networks}\\
   {\it Glorot et al. 2011}\\
   \vspace{2em}
-  $^{21}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
+  $^{22}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
   {\it GLU Variants Improve Transformer}\\
   {\it Noam Shazeer 2020}\\
   \vspace{2em}
-  $^{22}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
+  $^{23}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
   {\it Gaussian Error Linear Units (GELUs)}\\
   {\it Dan Hendrycks, Kevin Gimpel 2016}\\
   
@@ -1287,7 +1357,39 @@ to the input to the  feed-forward networks.
 % ==================================================
 % ==================================================
 \pagebreak
-% PAGE 12
+% PAGE 14
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    With the above nice input-output mapping translating to code as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class TransformerBlock(nn.Module):
+def __init__(self,d_in,d_out,n_heads,context_window,device="cpu"):
+    super(TransformerBlock,self).__init__()
+    self.rms_attn = RMSNorm(d_in,device=device)
+    self.attn = MHAandRoPE(d_in,d_out,n_heads,context_window,device=device)
+    self.rms_ffn = RMSNorm(d_in,device=device)
+    self.ffn = FeedForward(d_in,4*d_in,device=device)
+    
+def forward(self, x, m_thetas):
+    attn_x = self.rms_attn(x)
+    h = self.attn(attn_x, m_thetas) + x 
+
+    ffn_x = self.rms_ffn(h)
+    out_x = self.ffn(ffn_x)
+    x = out_x + h
+    return x
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE ###
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
