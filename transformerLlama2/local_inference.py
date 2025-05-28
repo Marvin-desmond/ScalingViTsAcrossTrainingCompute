@@ -61,9 +61,6 @@ class PIPELINE:
         from block_utils import load_weights_into_llama
         weights = torch.load(self.WEIGHTS, weights_only=True)
         model = TransformerLlama2(CONFIG,device=self.device)
-        print(model)
-        import sys 
-        sys.exit(0)
         load_weights_into_llama(model, CONFIG, weights)
         self.model = model.to(self.device)
         import sentencepiece as spm 
