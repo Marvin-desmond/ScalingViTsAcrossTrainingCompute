@@ -1269,11 +1269,70 @@ to the input to the  feed-forward networks.
     focuses on a Linear Unit known as SwiGLU \sidecite{22}, 
     a variation of the Transformer FFN layer which then uses a variant of the 
     Gated Linear Unit \sidecite{23}.
-    This leads to the FFN layer having three weight matrices as opposed to the original two.
-    Hence, from these clarifications, then the Transformer block is visualized as below
+    This leads to the FFN layer having three weight matrices as opposed to the original two 
+    which yields the implementation below.
+    \begin{tikzpicture}[
+    BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
+    RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=3pt, inner ysep=5pt}
+    ]
+        \footnotesize
+        \node[] (ref) {};
+        \node[RIR, fill=syellow] (L1) at ($(ref.south)+(0,-2)$) {\parbox{2cm}{\centering Linear Layer\\{\it (4096,11008)}}};
+        \draw[>=stealth,thick,<-] (L1.north) -- ++ (0,0.5) node[pos=0.6,name=l1c,inner sep=0]{};
+        \node[RIR, fill=spurple,anchor=north] (L2) at  ($(L1.south)+(0,-0.8)$) {\parbox{3cm}{\centering Sigmoid Linear Unit\\{$\text{\it SiLU}(x)=x*\sigma(x)$}}};
+        \node[RIR, fill=sorange, anchor=west] (LV) at ($(L2.east)+(0.3,0)$) {\parbox{2cm}{\centering Linear Layer\\{\it (4096,11008)}}};
+        \draw[>=stealth,thick,->] (l1c) -| (LV.north);
+        \draw[thick,->,>=stealth] (L1.south) -- (L2.north);
+        \draw[thick,->,>=stealth] (L2.south) -- ++ (0,-0.4) node[name=hp,pos=1.2]{$\otimes$};
+        \draw[thick,->,>=stealth] (LV.south) |- ($(hp.east)+(-0.15,0)$);
+        \node[RIR, fill=syellow] (L3) at  ($(hp.south)+(0,-1)$) {\parbox{2cm}{\centering Linear Layer\\{\it (11008,4096)}}};
+        \draw[thick,->,>=stealth] ($(hp.south)+(0,0.1)$) -- (L3.north);
+        % IMAGE POINTING TO THE CODE
+        \node[anchor=west] (hand) at ($(LV.east)+(0.1,0)$) {\includegraphics[width=0.15\textwidth]{images/hand-point-right.png}};
+        % THE CODE FOR LLAMA 2 FFN
+            \node[RIR,fill=sblue,anchor=west] (lmm) at ($(hand.east)+(0.1,0)$) {
+            \parbox{10cm}{\centering
+            \usebox{\ffnllama}
+            }};
+    \end{tikzpicture}
+    With the $\star$ operation being the Hadamard product, or as commonly known, 
+    the elementwise product, of the two Weight matrices of dimensions 
+    {\it $(4096,11008)$} to give a resulting matrix maintaining the given dimensions.\\
+    In the general implementation for any given Llama 2 variant, the hidden dimension size is 
+    gotten by 
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+        \item scaling of {\it dim} by 4
+        \item reduction by $2/3$
+        \item adjust it as a factor of a given multiple for computational efficiency
+      \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  $^{21}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
+  {\it Deep Sparse Rectifier Neural Networks}\\
+  {\it Glorot et al. 2011}\\
+  \vspace{2em}
+  $^{22}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
+  {\it GLU Variants Improve Transformer}\\
+  {\it Noam Shazeer 2020}\\
+  \vspace{2em}
+  $^{23}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
+  {\it Gaussian Error Linear Units (GELUs)}\\
+  {\it Dan Hendrycks, Kevin Gimpel 2016}
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE 14
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.95\textwidth}
+        \raggedright
+        Hence, from the clarifications, the whole Transformer block is visualized as
 \begin{tikzpicture}[
 RIR/.style={draw=black,thick,rectangle},
-AR/.style={->,thick,>=stealth}
+AR/.style={->,thick,>=stealth} 
 ]
     \scriptsize 
     % RMS Pre-Normalization
@@ -1317,7 +1376,7 @@ AR/.style={->,thick,>=stealth}
     \draw[AR] (irlayer.north) |- ($(L2.north)+(0.1,0.5)$);
     % L3 TO OUT
     \draw[AR] (L3.north) -- ++ (0,0.7);
-    \node (ref) at ($(L3.north)+(0,1.2)$) {};
+    \node (ref) at ($(L3.north)+(0,1)$) {};
     % Explain code
     \draw [->,red,thick,>=stealth] ($(prenorm.north)+(3.5,-1.5)$) node[name=pnw]{} to 
     [out=180,in=-5] ($(prenorm.north)+(0.85,-0.35)$);
@@ -1334,61 +1393,121 @@ AR/.style={->,thick,>=stealth}
             {\normalfont \textit{x.pow(2).mean(-1,keepdims=True)}}
             }
     };
-\end{tikzpicture}
-\end{minipage}%
-\hspace{25pt}
-\begin{minipage}[t]{.4\textwidth}
-  \raggedright \scriptsize
-  $^{21}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
-  {\it Deep Sparse Rectifier Neural Networks}\\
-  {\it Glorot et al. 2011}\\
-  \vspace{2em}
-  $^{22}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
-  {\it GLU Variants Improve Transformer}\\
-  {\it Noam Shazeer 2020}\\
-  \vspace{2em}
-  $^{23}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
-  {\it Gaussian Error Linear Units (GELUs)}\\
-  {\it Dan Hendrycks, Kevin Gimpel 2016}
-\end{minipage}
-\end{figure}
-% ==================================================
-% ==================================================
-\pagebreak
-% PAGE 14
-\begin{figure}[!htb]
-    \begin{minipage}[t]{0.65\textwidth}
-    With the above nice input-output mapping translating to code as
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+\end{tikzpicture}\\
+With the above nice input-output mapping translating to code as
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 class TransformerBlock(nn.Module):
-def __init__(self,d_in,d_out,n_heads,context_window,device="cpu"):
-    super(TransformerBlock,self).__init__()
-    self.rms_attn = RMSNorm(d_in,device=device)
-    self.attn = MHAandRoPE(d_in,d_out,n_heads,context_window,device=device)
-    self.rms_ffn = RMSNorm(d_in,device=device)
-    self.ffn = FeedForward(d_in,4*d_in,device=device)
-    
-def forward(self, x, m_thetas):
-    attn_x = self.rms_attn(x)
-    h = self.attn(attn_x, m_thetas) + x 
+    def __init__(self,d_in,d_out,n_heads,context_window,device="cpu"):
+        super(TransformerBlock,self).__init__()
+        self.rms_attn = RMSNorm(d_in,device=device)
+        self.attn = MHAandRoPE(d_in,d_out,n_heads,context_window,device=device)
+        self.rms_ffn = RMSNorm(d_in,device=device)
+        self.ffn = FeedForward(d_in,4*d_in,device=device)
+        
+    def forward(self, x, m_thetas):
+        attn_x = self.rms_attn(x)
+        h = self.attn(attn_x, m_thetas) + x 
 
-    ffn_x = self.rms_ffn(h)
-    out_x = self.ffn(ffn_x)
-    x = out_x + h
-    return x
+        ffn_x = self.rms_ffn(h)
+        out_x = self.ffn(ffn_x)
+        x = out_x + h
+        return x
 \end{lstlisting}
 \end{minipage}%
-\hspace{25pt}
-\begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \scriptsize 
-  hey side note
-\end{minipage}
 \end{figure}
 % ==================================================
 % ==================================================
 \pagebreak
 % PAGE 15
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.98\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The whole Llama 2 picture}\\
+Building this architecture has been interesting, so now let's go out from the Transformer block 
+to the whole Llama 2 model, having a full understanding of the architecture.
+\begin{minipage}{0.3\textwidth}
+    \begin{tikzpicture}[
+        BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
+        RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=3pt, inner ysep=5pt},
+        AR/.style={->,thick,>=stealth} 
+        ]
+        \footnotesize
+        \node[RIR,fill=sorange] (embs) {\parbox{3cm}{\centering embeddings layer}};
+        \draw[AR,<-] (embs.north) -- ++ (0,0.7) node[anchor=south] (xin) {\parbox{2cm}{\centering x\it \\(Batch,SeqLen)}};
+        \node at ($(xin.north)+(0,0.9)$) {};
+        \draw[AR] (embs.south) -- node[pos=0.3,right]{\it (Batch,SeqLen,Din)} ++ (0,-1.2) node[name=embsc]{};
+        \node[RIR,fill=syellow,anchor=north] (block) at (embsc) {\parbox{3cm}{\centering Transformer Block}};
+        \draw[AR,rounded corners=5pt] ($(block.south)+(0.5,0)$) --++ (0,-0.4) --++ (1.5,0) |- node[right,pos=0.25]{\it \times 32} ($(block.north)+(0.5,0.4)$) -- ($(block.north)+(0.5,0)$);
+        \draw[AR] (block.south) -- node[pos=0.7,right]{\parbox{3cm}{\it (Batch,SeqLen,Dout)\\where Dout=Din}} ++ (0,-1.7) node[name=embsc]{};
+        \node[RIR,fill=syellow,anchor=north] (rmsnorm) at (embsc) {\parbox{2cm}{\centering RMS Norm}};
+        \node[RIR, fill=sorange] (li) at ($(rmsnorm.south)+(0,-1.3)$) {\parbox{2.5cm}{\centering Linear Layer\\{\it (Dout,VocabSize)}}};
+        \draw[AR] (rmsnorm.south) -- (li.north);
+        \draw[AR] (li.south) --++ (0,-1.5) node[right,pos=0.5]{\it (Batch,SeqLen,VocabSize)} 
+        node[inner sep=0pt,name=endmodel,pos=1]{}
+        node[right]{\parbox{5cm}{\it postprocess for the\\most likely token}};
+        % \draw[AR,dashed,red,rounded corners=3pt] (endmodel.south) --++ (0,-0.7) --++ (5,0) |- node[pos=0.25,right]{\parbox{4cm}{\it x now (Batch,SeqLen+1)\\till stop token is reached}} ($(xin.north)+(0,0.7)$) -- (xin.north);
+    \end{tikzpicture}
+    for parameters
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+class CONFIG:
+    VOCAB: int = 32_000
+    CONTEXT_LEN: int = 4096 
+    DIM: int = 4096  
+    N_HEADS: int = 32
+    N_LAYERS: int = 32
+    HIDDEN_DIM: int = 11008
+    DTYPE: torch.dtype = torch.bfloat16 
+\end{lstlisting}
+\end{minipage}
+\hspace{10pt}
+\begin{minipage}{0.65\textwidth}
+\vspace{1em}
+{\it with the model translating to code as}
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class TransformerLlama2(nn.Module):
+    def __init__(self, CONFIG: CONFIG, device="cpu"):
+        super(TransformerLlama2,self).__init__()
+        self.token_embeddings = nn.Embedding(
+            CONFIG.VOCAB, CONFIG.DIM,
+            device=device)
+        self.layers = nn.ModuleList()
+        for _ in range(CONFIG.N_LAYERS):
+            self.layers.append(
+                TransformerBlock(
+                    CONFIG.DIM, CONFIG.DIM, 
+                    CONFIG.N_HEADS, CONFIG.CONTEXT_LEN, 
+                    device=device))
+        self.norm = RMSNorm(CONFIG.DIM, device=device)
+        self.output = nn.Linear(
+                        CONFIG.DIM,CONFIG.VOCAB,
+                        bias=False, device=device
+                        )
+        self.m_thetas = precompute_freqs_cis(
+                CONFIG.DIM//CONFIG.N_HEADS,
+                CONFIG.CONTEXT_LEN*2,
+                device=device
+            )
+    def forward(self,x):
+        batch, seq_len = x.shape
+        x = self.token_embeddings(x)
+        m_thetas_seq = self.m_thetas[:seq_len]
+        for layer in self.layers:
+            x = layer(x, m_thetas_seq)
+        x = self.norm(x)
+        x = self.output(x).float()
+        return x 
+\end{lstlisting}
+\end{minipage}
+The architecture now complete, the inferencing of the model given the loading of the weights is 
+the key section to follow. However, Large Language Models and in this case Llama2, even though decoder only,
+is still high memory demanding and so cannot be easily run on local computes. Therefore, inferencing brings into 
+light cloud computes that effectively run inference pipelines.
+\end{minipage}%
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE 16
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
