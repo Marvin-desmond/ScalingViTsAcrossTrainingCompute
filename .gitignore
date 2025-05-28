@@ -4,3 +4,4 @@ article/*
 !article/ScalingViT.pdf
 tests
 models
+.env
