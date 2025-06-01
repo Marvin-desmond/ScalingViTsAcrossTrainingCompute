@@ -155,7 +155,10 @@
     \begin{minipage}[t]{0.65\textwidth}
     {\sffamily 
     \fontsize{21}{8}\textcolor{xtitle}{\textit{Scaling ViTs across Training Compute}}\\
-    \fontsize{9}{8}\textcolor{xtitle}{\textit{\ by \href{https://www.linkedin.com/in/marvin-mboya}{Marvin\ \faLinkedinSquare}}}\\
+    \fontsize{9}{8}\textcolor{xtitle}{
+        \textit{
+            \ by \href{https://www.linkedin.com/in/marvin-mboya}{Marvin Mboya\ \faLinkedinSquare}
+    }}\\
     }\\
     [-0.3cm]
     \textcolor{xtitle}{{\it A journey across optimization levels}}\\
@@ -1735,7 +1738,7 @@ work with the remote compute.
 % ==================================================
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 19
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
@@ -1823,13 +1826,72 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 \end{minipage}
 \end{figure}
 % ==================================================
+\pagebreak
+% PAGE 20
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    {\sffamily 
+    \fontsize{16}{8}\textcolor{xtitle}{\textit{From Transformers To Vision Transformers}}}\\
+    \customtext{xtitle}{0em}{Revealing The Motivation}\\
+    The YouTube recommendation, being as tuned as ever to the videos I liked to watch, recommended me 
+    this one video{\maincitecount}. And of course, developers from DeepMind being the first to present
+    was an awesome start to the video, having loved the kind of impactful research DeepMind does, AlphaFold 2{\maincitecount}
+    being the first of many that stuck in my mind.\\
+    This video goes into optimization using Jax{\maincitecount}, as I would call it, a framework that's so powerful  
+    at granular and complex differentiation and JiT compiles to GPU and TPUs, a very interesting combo for High Performance 
+    Computing. Imagine wanting to build ML workloads in an efficient of code as you can possibly get.\\
+    A study done, presented by one Kathleen, gives a walkthrough on the speed and cost of training a ViT{\maincitecount} given different
+    performance metrics quantifying how fast training gets.{\maincitecount} 
+    This precursor study was a huge stepping stone to training Gemma group of models by Google, {\it Gemma 3n}{\maincitecount} being my 
+    most beloved, given it was focused on optimization and hence inference for relatively lower memory-constrainted devices.
+    \vspace{1em}\\
+    \customtitle{The focus of the article}
+    With this in mind, the article will now convert the previous Llama 2 architecture to the base Transformer model 
+    for which the Google {\it ViT} is based upon, before now looking into the ViT paper on changes to achieve the final Vision Transformers state.
+    However, we are still in the single-GPU pipeline, hence changes need be made to the architecture to shard it across many 
+    GPUs, optimizing it even by float point precision levels as we tune it to its optimal state ever.
+    \vspace{1em}\\
+    \customtitle{So why Vision Transformers?}
+    Given the interesting nature of Transformers of being computationally efficient and scalable, allowing training models of
+    unprecedented size with no sign of saturating performance, and convolutional architectures being so good at computer vision,
+    the research on {\it ViTs} aimed at improving Transformer models for image capabilities.
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  {\sidecitecount} \url{https://www.youtube.com/watch?v=vKcA094FSMk}\\
+  {\it Demo: Gemma 2 architecture: JAX, Flax, and more}\\
+    \vspace{2em}
+    {\sidecitecount} \url{https://deepmind.google/discover/blog/alphafold-a-solution-to-a-50-year-old-grand-challenge-in-biology/}
+  {\it AlphaFold: a solution to a 50-year-old grand challenge in biology}\\
+  \vspace{2em}
+   {\sidecitecount} \url{https://cloud.google.com/blog/products/ai-machine-learning/guide-to-jax-for-pytorch-developers}\\
+   {\it The PyTorch developer's guide to JAX fundamentals}\\
+   \vspace{2em}
+   {\sidecitecount} \href{https://arxiv.org/abs/2010.11929}{arXiv:2010.11929}\\
+   {\it An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale}\\
+   {\it Dosovitskiy et al. 2020}\\
+   \vspace{2em}
+   {\sidecitecount} 
+   \href{https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/community-content/vertex_model_garden/benchmarking_reports/jax_vit_benchmarking_report.md
+   }{ViT PyTorch vs JAX training benchmarks on Vertex AI Training Platform}\\
+   \vspace{2em}
+   {\sidecitecount} \url{https://www.youtube.com/watch?v=eJFJRyXEHZ0}
+   {\it Announcing Gemma 3n Preview: Powerful, Efficient, Mobile-First AI}
+\end{minipage}
+\end{figure}
 % ==================================================
 \pagebreak
 % PAGE ###
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{The spark 20 pages after}\\
+    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
+lorem ipsum dwffffef
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
