@@ -3,6 +3,7 @@
 \usepackage{graphicx} % Allows you to insert figures
 \usepackage{amsmath} % Allows you to do equations
 \usepackage{import}
+% AVOID SETSPACE WHICH RESETS SPACING
 \usepackage{enumitem} % for list items
 \usepackage{tikz}
 \usetikzlibrary{calc, shapes.geometric}
@@ -121,6 +122,8 @@
 \newcommand{\sidecite}[1]{\textsuperscript{\textcolor{blue}{\textbf{\scriptsize#1}}}}
 \newcommand{\customtitle}[1]{\fontsize{14}{8}\textcolor{xtitle}{\textit{#1}}\\}
 \newcommand{\itred}[1]{\scriptsize \textcolor{red}{\it #1}}
+\newcommand{\imagebullet}{$\vcenter{\hbox{\includegraphics[width=0.4cm]{images/modal.png}}}$}
+
 \usepackage{hyperref}
 \hypersetup{
     colorlinks=true,
@@ -145,7 +148,7 @@
     \begin{minipage}[t]{0.65\textwidth}
     {\sffamily 
     \fontsize{21}{8}\textcolor{xtitle}{\textit{Scaling ViTs across Training Compute}}\\
-    \fontsize{9}{8}\textcolor{xtitle}{\textit{\ by \href{https://www.linkedin.com/in/marvin-mboya-b7bb81195/}{Marvin\ \faLinkedinSquare}}}\\
+    \fontsize{9}{8}\textcolor{xtitle}{\textit{\ by \href{https://www.linkedin.com/in/marvin-mboya}{Marvin\ \faLinkedinSquare}}}\\
     }\\
     [-0.3cm]
     \textcolor{xtitle}{{\it A journey across optimization levels}}\\
@@ -1124,7 +1127,7 @@ def apply_rotary_embs(x, freqs_cis, device):
     };
     % first arrow to expand dims
     \draw [->,red,>=stealth] ($(intro.north east)+(1.5,-2.6)$) to 
-    ($(intro.north east)+(-0.5,-2.6)$);
+    ($(intro.north east)+(0,-2.6)$);
     \node[anchor=west] at ($(intro.north east)+(1.5,-2.6)$) {\itred{
             \parbox{6cm}{\raggedright 
             dynamically expands the last dimension \\
@@ -1134,7 +1137,7 @@ def apply_rotary_embs(x, freqs_cis, device):
     % second arrow to convert to complex
     \draw [->,red,>=stealth] ($(intro.north east)+(2.5,-0.4)$) 
     node[name=send]{} to 
-    [out=180,in=0] ($(intro.north)+(1.7,-2.1)$);
+    [out=180,in=0] ($(intro.north)+(1.5,-2.1)$);
     \node[anchor=west] at (send) {\itred{
             \parbox{6cm}{\raggedright
             takes each group of 2s of elements,\dots\newline
@@ -1147,7 +1150,7 @@ def apply_rotary_embs(x, freqs_cis, device):
     };
     % third arrow 
     \draw [->,red,>=stealth] ($(intro.north west)+(3.5,-3.5)$) node[name=se]{} to 
-    [out=180,in=-5] ($(intro.north west)+(2.1,-2.2)$);
+    [out=180,in=-5] ($(intro.north west)+(1.4,-2.1)$);
     \node[anchor=west] at (se) {\itred{
             \parbox{6cm}{\raggedright 
             dims transformed from $\left(\ldots,d\right)$\quad to\quad $\left(\ldots,\frac{d}{2}\right)$
@@ -1155,7 +1158,7 @@ def apply_rotary_embs(x, freqs_cis, device):
     };
     % fourth arrow
     \draw [->,red,>=stealth] ($(intro.south)+(5.5,1)$) node[name=se]{} to 
-    [out=180,in=-5] ($(intro.south)+(3.5,2.05)$);
+    [out=180,in=-5] ($(intro.south)+(3.1,2.05)$);
     \node[anchor=west] at (se) {\itred{
             \parbox{6cm}{\raggedright 
             reverses the effect of torch.view\_as\_complex
@@ -1501,7 +1504,8 @@ class TransformerLlama2(nn.Module):
 The architecture now complete, the inferencing of the model given the loading of the weights is 
 the key section to follow. However, Large Language Models and in this case Llama2, even though decoder only,
 is still high memory demanding and so cannot be easily run on local computes. Therefore, inferencing brings into 
-light cloud computes that effectively run inference pipelines.
+light cloud computes that effectively run inference pipelines.\\
+{\footnotesize $\star$ The current snapshot for the inference pipeline is now \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/transformerLlama2/local_inference.py}}
 \end{minipage}%
 \end{figure}
 % ==================================================
@@ -1511,8 +1515,311 @@ light cloud computes that effectively run inference pipelines.
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
+    \customtext{xtitle}{0em}{First shot at inference}\\
+As much as we would want to look for the cloud instance on AWS with the highest
+GPU VRAM and spawn it, ssh to it then copy the inference files and folders to the remote instance 
+before running the pipeline, and then worrying about destroring the instance before our expenses
+gets too high, let's simplify things a bit shall we! As on-demand as we can get and with just focusing on
+the Python code with a bit of sprinkling of decorators, 
+I'd like to go into this platform called Modal\sidecite{24}\\
+\customtext{xtitle}{0em}{Configuring Modal}\\
+After installing Modal, you can run a python file using
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+modal run hello.py
+\end{lstlisting}
+instead of 
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+python hello.py
+\end{lstlisting}
+To illustrate on the local entry point for Modal in the code, let's say the code in the file 
+is initially 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def func():
+    import subprocess
+    try:
+        subprocess.run("nvidia-smi")
+    except:
+        print("CUDA not found")
+
+if __name__ == "__main__":
+    func()
+\end{lstlisting}
+To have it compatible with cloud running, we'll have to decorate {\footnotesize \it func} as shown 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+import modal 
+app = modal.App()
+
+@app.function()
+def func():
+    import subprocess
+    try:
+        subprocess.run("nvidia-smi")
+    except:
+        print("CUDA not found")
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{24}$
+  \url{https://modal.com/docs/examples}
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE 17
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+the local entry point will now change from 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+if __name__ == "__main__":
+    func()
+\end{lstlisting}
+to now being
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+@app.local_entrypoint()
+def main():
+    func.local()
+    func.remote()
+\end{lstlisting}
+where the function can now be invoked on your local compute using
+{\it func.local}() and Modal's remote compute using {\it func.remote}(),
+and that's about it! For those familiar with CUDA, it is like prepending 
+the keywords {\it \_\_host\_\_ \_\_device\_\_} to a function without having to 
+rewrite the whole function for each compute. No need to ssh or maintain any GPU instance! 
+The results for the functions, assuming your local compute is CPU-only, 
+will be 
+\begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
+CUDA not found
+CUDA not found
+\end{lstlisting}
+Modal runs on CPU by default for the remote compute, so let's add a GPU option\sidecite{25}, for now going for the T4.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+import modal 
+app = modal.App()
+
+@app.function(gpu="T4")
+def func():
+    import subprocess
+    try:
+        subprocess.run("nvidia-smi")
+    except:
+        print("CUDA not found")
+    \end{lstlisting}
+and for the result!
+\vspace{-0.9em}
+\begin{tiny}
+{\color{CornflowerBlue}\begin{verbatim}
+CUDA not found
+Wed May 28 20:41:22 2025       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 570.86.15              Driver Version: 570.86.15      CUDA Version: 12.8     |
+|-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  Tesla T4                       On  |   00000000:00:1C.0 Off |                    0 |
+| N/A   24C    P8              9W /   70W |       1MiB /  15360MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+                                                                                         
++-----------------------------------------------------------------------------------------+
+\end{verbatim}}
+\end{tiny}
+% \includegraphics[width=\textwidth]{images/modalscreen.png}
+% % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% % \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{25}$
+  \begin{itemize}[label=\imagebullet,left=0pt,topsep=0pt,parsep=0ex]
+    \item T4 {\tiny $\sim$} {\color{black!40} 16GB VRAM}
+    \item L4 {\tiny $\sim$} {\color{black!40} 24GB VRAM}
+    \item A10G {\tiny $\sim$} {\color{black!40} 24GB VRAM}
+    \item A100-40GB
+    \item A100-80GB
+    \item L40S {\tiny $\sim$} {\color{black!40} 48GB VRAM}
+    \item H100 {\tiny $\sim$} {\color{black!40} 80GB VRAM}
+  \end{itemize}
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE 18
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Configuring the pipeline for GPU inference}\\
+Now that we have a good enough understanding of Modal, let's configure the file
+{\it \small local\_inference.py} for remote compute.\\
+We'll need torch for GPU accelerated numerical computing, huggingface hub for downloading 
+llama weights, sentencepiece as the tokenizer package for Llama2. So let's create 
+an image that has those packages, and also upload the corresponding necessary files to remote 
+that defines the classes and utilities for the model implementation.
+
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+import modal 
+app = modal.App("llama-gpu-inference")
+image = modal.Image.debian_slim().pip_install(
+    "torch", "numpy", "sentencepiece",
+    "huggingface_hub[hf_transfer]"
+    ).env({"HF_HUB_ENABLE_HF_TRANSFER": "1"}
+    ).add_local_file(
+        local_path="./core.py",remote_path="/root/core.py"
+    ).add_local_file(
+        local_path="./block_utils.py",remote_path="/root/block_utils.py"
+    ).add_local_file(
+        local_path="../pos_freqs.py",remote_path="/root/pos_freqs.py"
+    ).add_local_dir(local_path="../mha", remote_path="/root/mha")
+\end{lstlisting}
+Let's then provision a Modal volume for saving the weights. 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+from pathlib import Path
+volume = modal.Volume.from_name("model-weights-vol", create_if_missing=True)
+MODEL_DIR = Path("/models") # note the dot is removed
+\end{lstlisting}
+Next, we make our function to download model weights run on remote compute by decorating it as follows
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+@app.function(
+  volumes={MODEL_DIR: volume},
+  image=image,
+  secrets=[modal.Secret.from_name("huggingface-secret")])
+def download_model(
+    repo_id: str="meta-llama/Llama-2-7b",
+    revision: str=None,  # include a revision to prevent surprises!
+    ):
+    # more code below ...
+\end{lstlisting}
+and by changing the function call as\sidecite{26} 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+download_model.remote()
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{26}$ ensure the huggingface secret is configured since Llama weights access requires 
+  authentication, and also remove the 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+from dotenv import load_dotenv 
+load_dotenv()
+\end{lstlisting}
+and 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+if not torch.cuda.is_available():
+    sys.exit(0)
+\end{lstlisting}
+snippets of codes from the original {\it local\_inference.py} code file for it to 
+work with the remote compute.
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Choosing the right GPU}\\
+This is the core question for us to choose the GPU that fits our memory needs during inference whilst also 
+being economical but not by reducing the reliable output of tokens/sec. We cannot use the T4 because as this 
+equation states\sidecite{27}, the gpu memory (in GB) denoted as $M$ is given by 
+\begin{align*}
+    & M = \Bigg(\frac{P\times4B}{32/Q}\Bigg)\times1.2\\
+    & \text{where}\\
+    & P\ \text{\footnotesize $\sim$}\ \text{amount of parameters in the model}\\
+    & 4B\ \text{\footnotesize $\sim$}\ \text{4 bytes, the bytes used for each parameter}\\
+    & 32\ \text{\footnotesize $\sim$}\ \text{there are 32 bits in 4 bytes}\\
+    & Q\ \text{\footnotesize $\sim$}\ \text{amount of bits for loading the model, 16 bits, 8 bits, or 4 bits}\\
+    & 1.2\ \text{\footnotesize $\sim$}\ \text{20\% overhead of additional loading in GPU memory}
+\end{align*}
+For {\it Llama2 model 7B}, which obviously has 7B\sidecite{28} parameters, currently being inferenced at full precision, 
+hence yielding $Q$ as 32, the lower bound for GPU is then 
+\begin{align*}
+    &M=\Bigg(\frac{7\times10^9\times4}{32/32}\Bigg)\times1.2\\
+    &M = 3.36\times10^{10}\ \text{bytes}\\
+    &M = 33.6\ GB
+\end{align*}
+Hence for the GPU options by Modal, we can then go for the nearest upper GPU which is A100-40GB. This leads to 
+decorating our class as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+@app.cls(
+        gpu="A100-40GB", 
+        volumes={MODEL_DIR: volume}, 
+        image=image
+        )
+class PIPELINE:
+    # more code ...
+    device = "cuda"
+\end{lstlisting}
+and interesting changes to the {\it \footnotesize \_\_init\_\_} and the {\it \footnotesize inference} 
+methods\sidecite{29}.
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  $^{27}$ \href{https://training.continuumlabs.ai/infrastructure/data-and-memory/calculating-gpu-memory-for-serving-llms}{Calculating GPU memory for serving LLMs}
+  \vspace{2em}\\
+  $^{28}$ what if we didn't know the number of parameters? Well for starters, we can get the parameters of filters in convolution layers by knowing the number of filters
+  and the number of channels per each input to that layer and the kernel size (depthwise stack of kernels form a filter). For a Linear layer,
+  we get the size of the weight matrix and the bias to compute the parameters in that layer.
+  \vspace{2em}\\
+  $^{29}$
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+    def __init__(self, device):
+        # ...
+\end{lstlisting}
+becomes
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+    @modal.enter()
+    def enter(self):
+        # ...
+\end{lstlisting}
+and the inference method is decorated as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+    @modal.method()
+    def inference(self):
+        # ...
+\end{lstlisting}
+with the function call being changed to 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+@app.local_entrypoint()
+def main():
+    download_model.remote()
+    pipeline = PIPELINE()
+    pipeline.inference.remote()
+\end{lstlisting}
+And so trying this prompt\\
+{\it \color{xtitle} The interesting life of the blue eyed child from a glass orb}\\
+gives\\
+{\it The interesting life of the blue eyed child from a glass orb.
+A story of the unusual life of a young girl who grew up in the midst of the great depression. She saw a lot in her short life.
+It's a heart warming story of a little girl who grew into a wonderful woman.
+This is a biography of a woman who grew up in the south during the Great Depression, who then worked her way through college and became a successful attorney and judge.
+It's the story of a young girl who grows up in the midst of the depression and becomes a successful attorney. It's a great story with a lot of heart.
+I loved this book. It was such a great read. I loved the story of a girl growing up in the midst of the depression, and how she made her way through life.
+This is a wonderful story about a young girl who grew up in the midst of the Great Depression and how she was able to make it through. She was a strong and determined young woman and her story is very inspiring. I would recommend this book to anyone.
+This is a very interesting and inspiring story. It is the story of a young girl growing up in the midst of the Great Depression and how she was able to make it through. She was a strong and determined young woman and her story is very inspiring...}
+\end{minipage}
+\end{figure}
+% ==================================================
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
     \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
-lorem ipsum dwffffef
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
@@ -1522,6 +1829,7 @@ lorem ipsum dwffffef
   \scriptsize 
 \end{minipage}
 \end{figure}
+% ==================================================
 % ==================================================
 % ==================================================
 \pagebreak
