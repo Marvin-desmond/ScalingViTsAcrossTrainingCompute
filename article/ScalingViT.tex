@@ -1333,27 +1333,25 @@ to the input to the  feed-forward networks.
     \begin{minipage}[t]{0.95\textwidth}
         \raggedright
         Hence, from the clarifications, the whole Transformer block is visualized as
-\begin{tikzpicture}[
-RIR/.style={draw=black,thick,rectangle},
-AR/.style={->,thick,>=stealth} 
-]
+\begin{tikzpicture}[RIR/.style={draw=black,thick,rectangle},AR/.style={->,thick,>=stealth}]
     \scriptsize 
     % RMS Pre-Normalization
     \node[RIR,fill=sblue,inner sep=5pt] (prenorm) {\parbox{6cm}{\centering $\frac{x_i}{\text{\footnotesize RMS}(x)}*\gamma_i$\vspace{0.5em}\\where\vspace{0.5em}\\$\text{\footnotesize RMS}(x)=\sqrt{\epsilon+{\color{red} \underbrace{\color{black} \frac{1}{n}\sum_{i=1}^nx_i^2}}}_{}$}};
     % MHA Block (Abstracted as already iimplemented)
-    \node[RIR,fill=sorange,anchor=south] (mha) at ($(prenorm.north)+(0,0.7)$) {\parbox{5cm}{\centering MHA for Llama 2 \textit{7B, 13B}, \\GQA for Llama 2 \textit{34B, 70B}}};
+    \node[RIR,fill=sorange,anchor=south] (mha) at ($(prenorm.north)+(0,0.4)$) {\parbox{5cm}{\centering MHA for Llama 2 \textit{7B, 13B}, \\GQA for Llama 2 \textit{34B, 70B}}};
     % Add the Attention Output and the original Input
     \draw[<-,thick,>=stealth] (prenorm.south) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,-1) node[pos=1.2]{$x$};
-    \draw[->,thick,>=stealth] (fromx) -- ++ (-4,0) |- (mha.west);
     % Implement the RMS Again
-    \node[RIR,anchor=south,fill=sgreen] (prermsffn) at ($(mha.north)+(0,0.7)$) {\parbox{3cm}{\centering RMS normalization again!}};
+    \node[RIR,anchor=south,fill=sgreen] (prermsffn) at ($(mha.north)+(0,1.3)$) {
+        \parbox{3cm}{\centering RMS normalization again!}
+        };
     % WRAPPING BOX FOR SWIGLU
-    \node[RIR,anchor=south,fill=red!5,draw=red,dashed,minimum height=5.5cm,minimum width=9cm] at ($(prermsffn.north)+(2,0.4)$) {
-        \parbox[t][5.2cm][t]{9cm}{
+    \node[RIR,anchor=south,fill=red!5,draw=red,dashed,minimum height=5.2cm,minimum width=9cm] at ($(prermsffn.north)+(2,0.35)$) {
+        \parbox[t][5.1cm][t]{9cm}{
         \centering\virgil \fontsize{9}{10}\selectfont \hspace{3cm}Swish-Gated Linear Unit}
         };
     % FFN after the normalization
-    \node[RIR, fill=syellow,anchor=south] (L1) at ($(prermsffn.north)+(0,1)$) {\parbox{2cm}{\centering Linear Layer\\{\it (4096,11008)}}};
+    \node[RIR, fill=syellow,anchor=south] (L1) at ($(prermsffn.north)+(0,0.7)$) {\parbox{2cm}{\centering Linear Layer\\{\it (4096,11008)}}};
         \node[RIR,fill=spurple,anchor=south] (L2) at  ($(L1.north)+(0,0.5)$) {\parbox{3.5cm}{\centering 
         SiLU$(x)=x*\sigma(x)$\\
         {with $\sigma(x)$ being the sigmoid function}\\
@@ -1371,15 +1369,20 @@ AR/.style={->,thick,>=stealth}
     % ARRROWS 
     % PreNorm to MHA
     \draw[AR] (prenorm.north) -- (mha.south);
-    % MHA to FFN
-    \draw[AR] (mha.north) -- (prermsffn.south);
+    % MHA to FFN VIA RMS NORM AGAIN
+    \draw[AR] (mha.north) -- ++ (0,0.3) node[name=conc1,anchor=south,inner sep=0]{\scriptsize $\oplus$};
+    \draw[AR] (conc1.north) -- ++ (0,0.3) node[name=conc2,anchor=south,inner sep=0]{\scriptsize $\oplus$};
+    \draw[AR,<-] (prermsffn.south) -- ++ (0,-0.25);
+    \draw[->,thick,>=stealth] (fromx) -- ++ (-4,0) |- (conc1.west);
     \draw[AR] (prermsffn.north) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.south);
     % INPUT TO L1 TAPPED TO IR LINEAR LAYER
     \draw[AR] (midtoir) -| (irlayer.south);
     \draw[AR] (irlayer.north) |- ($(L2.north)+(0.1,0.5)$);
     % L3 TO OUT
-    \draw[AR] (L3.north) -- ++ (0,0.7);
-    \node (ref) at ($(L3.north)+(0,1)$) {};
+    \draw[AR] (L3.north) -- ++ (0,0.4) node[name=conc3,anchor=south,inner sep=0]{\scriptsize $\oplus$};
+    \draw[AR] (conc3.north) -- ++ (0,0.4);
+    % RMS AGAIN TO OUT
+    \draw[AR] (conc2.west) --++ (-3.5,0) |- (conc3.west);
     % Explain code
     \draw [->,red,thick,>=stealth] ($(prenorm.north)+(3.5,-1.5)$) node[name=pnw]{} to 
     [out=180,in=-5] ($(prenorm.north)+(0.85,-0.35)$);
