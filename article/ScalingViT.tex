@@ -123,6 +123,8 @@
 \newcommand{\customtitle}[1]{\fontsize{14}{8}\textcolor{xtitle}{\textit{#1}}\\}
 \newcommand{\itred}[1]{\scriptsize \textcolor{red}{\it #1}}
 \newcommand{\imagebullet}{$\vcenter{\hbox{\includegraphics[width=0.4cm]{images/modal.png}}}$}
+\newcommand{\maincitecount}{\sidecite{\stepcounter{maincite}\themaincite}}
+\newcommand{\sidecitecount}{$^{\stepcounter{sidecite}\thesidecite}$}
 
 \usepackage{hyperref}
 \hypersetup{
@@ -142,8 +144,13 @@
 \title{GPGPU Programming with CUDA}
 \author{Marvin}
 \date{\today}
+
+% sidecite counter
+\newcounter{maincite}
+\newcounter{sidecite}
 % \maketitle
 % PAGE 1
+
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     {\sffamily 
@@ -166,10 +173,10 @@
     to the best crypto miners in the east continents!
     \vspace{1.5em}\\
     \fontsize{14}{8}\textcolor{xtitle}{\textit{Back in time}}\\
-    {\it Vaswani et al.} didn't understand the gravity of their research$^1$ when they lightly ended their paper, but 
+    {\it Vaswani et al.} didn't understand the gravity of their research{\maincitecount} when they lightly ended their paper, but 
     it inspired to generalize learning in the natural language domain, being largely parallelizable and solving saturation in 
     training performance for increased training data.\\
-    Recurrent Neural Networks$^2$ was the precursor to this, its encoder that generates the latent space representation of the input tokens
+    Recurrent Neural Networks{\maincitecount} was the precursor to this, its encoder that generates the latent space representation of the input tokens
     working in such a way that it captures the entire meaning of the input sentence in its final hiddetn state. This processing of the 
     entire input text was its drawback as it could not access intermediate hidden states hence not capturing dependencies within words
     in the sentence.\\
@@ -183,11 +190,11 @@
     \begin{minipage}[t]{.4\textwidth}
       \raggedright
       \scriptsize 
-      $^1$ 	\href{https://arxiv.org/abs/1706.03762}{arXiv:1706.03762}\\
+      {\sidecitecount} \href{https://arxiv.org/abs/1706.03762}{arXiv:1706.03762}\\
       {\it Attention is all you need}\\
       {\it Vaswani et al. 2017}\\
       \vspace{2em}
-      $^2$ RNNs can be understood using a special key word, {\it \bf recurrent}, meaning to recur, where each hidden 
+      {\sidecitecount} RNNs can be understood using a special key word, {\it \bf recurrent}, meaning to recur, where each hidden 
       state would have a loop within itself and also includes the compounded outputs of all the previous hidden states,
       hugely based on the concept of a Markov model\\
       \vspace{2em}
@@ -219,9 +226,9 @@
     Basically, computational models cannot process strings, hence it needs conversion to a vector of integers, each word (or subword) 
     uniquely mapped to a corresponding integer, a process known as {\it tokenization}. A basic form 
     would be a hashmap of words to integers and vice versa for getting a word from index of maximum 
-    probability in softmaxed one-dimensional distribution of output float values \sidecite{3}.\\
+    probability in softmaxed one-dimensional distribution of output float values {\maincitecount}.\\
     \vspace{0.5em}
-    Implementing a simple tokenizer based on the vocabulary\sidecite{4} we have, 
+    Implementing a simple tokenizer based on the vocabulary{\maincitecount} we have, 
 \begin{lstlisting}[language=python,style=python,,basicstyle=\ttfamily\footnotesize]
 text = "The ruler of a kingdom is a"
 text = text.lower() # making tokenizer case insensitive 
@@ -234,7 +241,7 @@ ids_to_words = {v:k for k,v in words_to_ids.items()}
 Great, now we have lookup tables (the last two lines), and a naive preprocessing of text needed 
 before tokenization.  So then, let's tokenize \textcolor{xtitle}{the kingdom had another ruler}.
 Wait?! The lookup table does not have the words \textcolor{xtitle}{"another", "had", "another"}! 
-Let's improve it so any word not part of the original vocabulary be assigned a new unique id\sidecite{5}.
+Let's improve it so any word not part of the original vocabulary be assigned a new unique id{\maincitecount}.
 \begin{lstlisting}[language=python,style=python,,basicstyle=\ttfamily\footnotesize]
 words_to_ids = {word:i for i, word in enumerate(vocab)}
 ids_to_words = {v:k for k,v in words_to_ids.items()}
@@ -253,13 +260,13 @@ def lookup(word):
     \begin{minipage}[t]{.4\textwidth}
       \raggedright
       \scriptsize 
-      $^3$ the commonly used tokenizer is tiktoken, using a concept called Byte-Pair Encoding to 
+      {\sidecitecount} the commonly used tokenizer is tiktoken, using a concept called Byte-Pair Encoding to 
       map subwords to ids using a look-up table that takes into account frequencies of subwords.\\
       \vspace{2em}
-      $^4$ vocabulary {\tiny $\sim$} set of unique words (or subwords based on the tokenization strategy) 
+      {\sidecitecount} vocabulary {\tiny $\sim$} set of unique words (or subwords based on the tokenization strategy) 
       in all words of the entire training dataset used to train a particular large language model.\\
       \vspace{2em}
-      $^5$ our look-up tables are very much capable of any encoding and decoding (for the tiny tiny vocabulary).
+      {\sidecitecount} our look-up tables are very much capable of any encoding and decoding (for the tiny tiny vocabulary).
     \end{minipage}
 \end{figure}
 % PAGE 3
@@ -281,11 +288,11 @@ print(sentence_gotten)
 \textbf{\textit{\small Note}} that the above implementation of tokenization is to help you understand a baseline of what happens 
 under the hood in conversion of what models cannot deal with, strings, to a format that can be computationally 
 crunched.\\
-Hoever, when looking into the Transformers model architecture as outlined in the paper\sidecite{1}, also in\sidecite{6}
+Hoever, when looking into the Transformers model architecture as outlined in the paper\sidecite{1}, also in{\maincitecount}
 for convenience, it is seen that the first block is an Embedding block.\\
 \customtext{xtitle}{1em}{What about the Embeddings block?}\\
 Well, the vector of integers as input in itself cannot capture rich latent representations of the input tokens, 
-so the Embeddings block\sidecite{7} does just that, mapping the tokens to higher dimensions. The embeddings block is usually 
+so the Embeddings block{\maincitecount} does just that, mapping the tokens to higher dimensions. The embeddings block is usually 
 \bandi{V} by \bandi{D}, where \bandi{V} is the size of the vocabulary, and \bandi{D} is an abstract dimension of your choosing, 
 the higher the better, but more computationally expensive and longer to process.\\
 Using PyTorch, an Embeddings block of {\it D being 3} can be implemented as:
@@ -303,10 +310,10 @@ and the embedding dimensions, \bandi{D}, being 3072.
     \begin{minipage}[t]{.4\textwidth}
       \raggedright
       \scriptsize 
-      $^6$ Transformers architecture\\
+      {\sidecitecount} Transformers architecture\\
       \includegraphics[width=\textwidth]{images/transformers.png}\\
       \vspace{2em}
-      $^7$ {\it nn.Embedding} is just {\it nn.Linear} but only that {\it nn.Embedding} simplifies retrieving rows from its weights 
+      {\sidecitecount} {\it nn.Embedding} is just {\it nn.Linear} but only that {\it nn.Embedding} simplifies retrieving rows from its weights 
       such that you don't pass it one hot vectors but just indeces basically same as the position of the single {\it 1s} in the 
       one-hot vector you would have passed to {\it nn.Linear}
     \end{minipage}
@@ -323,8 +330,8 @@ and the embedding dimensions, \bandi{D}, being 3072.
     sequence or not.\\
     The meaning of a sentence can change if words are reordered, so this technique retains information about the order of the words in a sequence.\\
     Positional encoding is the scheme through which the knowledge of the order of objects in a sequence is maintained.\\
-    This post by Christopher\sidecite{8} highlights the evolution of positional encoding in transformer models, a worthy read! For this article, 
-    let's focus on the rotary positional embedding (RoPE){\scriptsize\ \textcolor{blue}{$\mathbf{^9}$}}.\\    
+    This post by Christopher{\maincitecount} highlights the evolution of positional encoding in transformer models, a worthy read! For this article, 
+    let's focus on the rotary positional embedding (RoPE){\maincitecount}.\\    
     % \vspace{0.5em}
     % \customtext{xtitle}{1em}{Why this encoding?}\\
     % Previous approaches to encoding did first incorporate positional information to the context representations before transforming them to queries, keys and values. 
@@ -359,12 +366,12 @@ device = torch.device(
     \begin{minipage}[t]{.4\textwidth}
       \raggedright
       \scriptsize 
-      $^8$ \tiny{\url{https://huggingface.co/blog/designing-positional-encoding}}\\
+      {\sidecitecount} \scriptsize{\url{https://huggingface.co/blog/designing-positional-encoding}}\\
       \scriptsize 
       { \it You could have designed state of the art positional encoding}\\
       {\it Christopher Fleetwood}\\
       \vspace{2em}
-      $^9$ 	\href{https://arxiv.org/pdf/2104.09864}{arXiv:2104.09864}\\
+      {\sidecitecount} 	\href{https://arxiv.org/pdf/2104.09864}{arXiv:2104.09864}\\
       {\it RoFormer: Enhanced Transformer with Rotary Position Embedding}\\
       {\it Su et al. 2022}\\
       \vspace{2em}
@@ -421,7 +428,7 @@ device = torch.device(
         $}
     \end{equation*}
     Having implemented $\vec{\theta}$, next let's implement {\it $m\vec{\theta}$} by way 
-    of an outer product\sidecite{10}\\
+    of an outer product{\maincitecount}\\
 \begin{lstlisting}[language=python,style=python,,basicstyle=\ttfamily\footnotesize]
 m = torch.arange(context_len, device=device)
 freqs = torch.outer(m, theta_s).float()    
@@ -521,7 +528,7 @@ $}
     \begin{minipage}[t]{.4\textwidth}
       \raggedright
       \scriptsize 
-      $^{10}$ {\it context\_len} is an integer which refers to the maximum number of tokens the 
+      {\sidecitecount} {\it context\_len} is an integer which refers to the maximum number of tokens the 
       model can consider in a single forward pass
     \end{minipage}
 \end{figure}
@@ -572,8 +579,8 @@ a picture is worth a thousand words! Let it do the talking!
     % nodes for matrix multiplication
     \node[RIR,fill=sblue, anchor=north] (q) at (endl3) {
         \parbox{4.5cm}{\centering Q=W\textsubscript{q}(x)\\
-        \textcolor{black!50}{\tiny invokes x@W\textsubscript{q}.T where W\textsubscript{q} is nn.Linear 
-        with dims d\_in x d\_out, but weights stored as d\_out x d\_in}}};
+        \textcolor{black!50}{\tiny invokes x@W\textsubscript{q}.T where W\textsubscript{q} is nn.Linear{\maincitecount} 
+        with dims d\_in x d\_out, but weights stored as d\_out x d\_in{\maincitecount}}}};
     \node[RIR,fill=sblue, anchor=north] (k) at (endl1) {
         \parbox{2.5cm}{\centering K=W\textsubscript{k}(x)}};
     \node[RIR,fill=sblue, anchor=north] (v) at (endl2) {V=W\textsubscript{v}(x)};
@@ -640,11 +647,11 @@ a picture is worth a thousand words! Let it do the talking!
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{11}$ {\it nn.Linear} is an instance initialization of a stack of perceptrons in a single layer in PyTorch, 
+  {\sidecitecount} {\it nn.Linear} is an instance initialization of a stack of perceptrons in a single layer in PyTorch, 
   with {\it d\_in} previously known as the abstract dim of the word embedding, and  {\it d\_out} is initialized 
   as {\it d\_in}\\
   \vspace{2em}
-  $^{12}$ proving the invocation that initializes Q, K and V matrices
+  {\sidecitecount} proving the invocation that initializes Q, K and V matrices
   \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 import torch
 import torch.nn as nn
@@ -654,7 +661,7 @@ torch.equal(Wq(x), x.dot(Wq.weight.T))
 torch.equal(Wq(x), x@Wq.weight.T) # True
   \end{lstlisting}
   \vspace{2em}
-  $^{13}$ the MHA has its core in attention mechanism whose goal is to dynamically decide on 
+  {\sidecitecount} the MHA has its core in attention mechanism whose goal is to dynamically decide on 
   which inputs we want to “attend” more than others based on 
   \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
     \item \textbf{\textit{query}} {\tiny $\sim$} a feature vector that describes what we are looking for in the sequence, i.e. what would we maybe want to pay attention to.
@@ -674,7 +681,7 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
         \item compute the dot product of queries and keys of dimension $d_k$, $QK^T$
         \item scaling by a factor $1/\sqrt{d_k}$ to counteract the effect of extremely small gradients in the 
-        softmax computation as will be seen in the next step when $d_k$ becomes very large\sidecite{14}.
+        softmax computation as will be seen in the next step when $d_k$ becomes very large{\stepcounter{maincite}}{\maincitecount}.
         This begets the attention scores.
         \item softmax computation of the normalized result attention scores. The result is the attention weights.
         \item dot product of the attention weights and the values.
@@ -737,7 +744,7 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
                 \textit{courtesy of \href{https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial6/Transformers_and_MHAttention.html}{UvA course notes}}
                 }\\
     \vspace{2em}
-    $^{14}$ $d_k$ is the size of the last dimension of the keys after linear projection and transpose, to be implemented later.
+    {\sidecitecount} $d_k$ is the size of the last dimension of the keys after linear projection and transpose, to be implemented later.
     It is the head dimension for each attention head.\\ 
     Sanity check states that your key dimension be {\it B x Seq\_len x h x head\_dim}
     before this step where $d_k$ is gotten by {\it k.shape[-1]}
@@ -748,7 +755,7 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    During the decoding phase, at each step of predicting a word\sidecite{15}, the network needs take a look 
+    During the decoding phase, at each step of predicting a word{\maincitecount}, the network needs take a look 
     at the words previous to that step, and output a softmax prediction for what it thinks the next word 
     is. Since transformers attend to the entire sequence, before and after, it becomes a trivial task to predict 
     the next word, simply by putting 100\% attention to the word after it.\\
@@ -758,7 +765,7 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
     \customtext{xtitle}{1em}{Implementing masking in code}\\
     Let's use the sequence below\\
     {\it Eiffel Tower is in Paris}\\
-    and consider the llama 2 tokenizer\sidecite{16}, {\it sentencepiece}, as the final Transformers model built on these progressive learnings  
+    and consider the llama 2 tokenizer{\maincitecount}, {\it sentencepiece}, as the final Transformers model built on these progressive learnings  
     while building on the architecture is Llama 2.
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 import sentencepiece as spm 
@@ -790,11 +797,11 @@ print(scaled_scores.shape) # torch.Size([7, 7])
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{15}$ the model actually predicts a token which, by using a lookup table, is decoded to a word which 
+  {\sidecitecount} the model actually predicts a token which, by using a lookup table, is decoded to a word which 
   is what humans understand.\\
   \vspace{2em}
-  $^{16}$ the lookup-table {\it tokenizer.model} can be found from the huggingface model card for {\it Llama-2-7b}
-  {\tiny \url{https://huggingface.co/meta-llama/Llama-2-7b/tree/main}}
+  {\sidecitecount} the lookup-table {\it tokenizer.model} can be found from the huggingface model card for {\it Llama-2-7b}
+  {\scriptsize \url{https://huggingface.co/meta-llama/Llama-2-7b/tree/main}}
 \end{minipage}
 \end{figure}
 \pagebreak
@@ -840,7 +847,7 @@ norm_out = norm(out)
 \end{lstlisting}
 \customtext{xtitle}{0em}{What about the Feed Forward Network layer}\\
 Always forming a crucial layer in most models, the FFN, in this case, 
-maps context rich vectors onto a higher dimension\sidecite{17} which 
+maps context rich vectors onto a higher dimension{\maincitecount} which 
 increases learning so it can model more complex relationships and also 
 adds an activation function to introduce non-linear, even better relations.
 \end{minipage}%
@@ -849,7 +856,7 @@ adds an activation function to introduce non-linear, even better relations.
   \raggedright
   \centering
   \scriptsize 
-  $^{17}$ \textcolor{xtitle}{\it Feed Forward NN layer for Transformer model}\\
+  {\sidecitecount} \textcolor{xtitle}{\it Feed Forward NN layer for Transformer model}\\
   \vspace{1em}
     \begin{tikzpicture}[
     BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
@@ -1005,14 +1012,14 @@ to implementation.\\
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 But wait! what about the RoPE implementation, remember that as has been discussed earlier,
-positional encodings should be somewhere in the above disjointed\sidecite{18} graph of a code.
+positional encodings should be somewhere in the above disjointed{\maincitecount} graph of a code.
 Let's figure out where?
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{18}$ disjointed for it does not exist in a {nn.Module} class with the updatable weights in the init
+  {\sidecitecount} disjointed for it does not exist in a {nn.Module} class with the updatable weights in the init
   part of the class  
 \end{minipage}
 \end{figure}
@@ -1172,7 +1179,7 @@ let's inject it into the graph for the MultiHead Attention after the transformat
     [\text{\it batch} \times \text{\it seq\_len} \times \text{\it n\_heads} \times \text{\it head\_dim}]
 \end{gather*}
 \vspace{-3em}\\
-but before the high-dimensional transpose to get the batch of heads each with dimensions (seq\_len,head\_dim)\sidecite{19}.
+but before the high-dimensional transpose to get the batch of heads each with dimensions (seq\_len,head\_dim){\maincitecount}.
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
@@ -1180,7 +1187,7 @@ but before the high-dimensional transpose to get the batch of heads each with di
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{19}$Reminder that the rotational transformation is to be applied to the queries and keys only and not the values
+  {\sidecitecount} reminder that the rotational transformation is to be applied to the queries and keys only and not the values
   ({\it refer to page 4}).
 \end{minipage}
 \end{figure}
@@ -1190,7 +1197,7 @@ but before the high-dimensional transpose to get the batch of heads each with di
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-$\star$ which is then done below\sidecite{20}\\
+$\star$ which is then done below{\maincitecount}\\
 \begin{tikzpicture}
 \node (intro) {
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
@@ -1247,7 +1254,7 @@ to the input to the  feed-forward networks.
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{20}$ full neat implementation\\
+  {\sidecitecount} full neat implementation\\
   \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/mha/mha_with_rope.py}\\
   {\it Llama 2 Multi-Head Attention with ROPE}
 \end{minipage}
@@ -1260,7 +1267,7 @@ to the input to the  feed-forward networks.
     \raggedright
     However, the original FFN, as can be seen from the side notes 
     on {\it pg.9}, does two linear transformations with a 
-    ReLU \sidecite{21} activation function applied between the two 
+    ReLU{\maincitecount} activation function applied between the two 
     linear transformations.
     \begin{align*}
         FFN(x, W_1, W_2, b_1, b_2) = \max(0, xW_1 + b_1)W_2 + b_2
@@ -1269,9 +1276,9 @@ to the input to the  feed-forward networks.
     linear topology on the just aforementioned page.\\
     Llama2, the current LLM architecture of interest in implementation in this 
     section of the article, 
-    focuses on a Linear Unit known as SwiGLU \sidecite{22}, 
+    focuses on a Linear Unit known as SwiGLU{\maincitecount}, 
     a variation of the Transformer FFN layer which then uses a variant of the 
-    Gated Linear Unit \sidecite{23}.
+    Gated Linear Unit{\maincitecount}.
     This leads to the FFN layer having three weight matrices as opposed to the original two 
     which yields the implementation below.
     \begin{tikzpicture}[
@@ -1312,15 +1319,15 @@ to the input to the  feed-forward networks.
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright \scriptsize
-  $^{21}$ \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
+  {\sidecitecount} \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
   {\it Deep Sparse Rectifier Neural Networks}\\
   {\it Glorot et al. 2011}\\
   \vspace{2em}
-  $^{22}$ \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
+  {\sidecitecount} \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
   {\it GLU Variants Improve Transformer}\\
   {\it Noam Shazeer 2020}\\
   \vspace{2em}
-  $^{23}$ \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
+  {\sidecitecount} \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
   {\it Gaussian Error Linear Units (GELUs)}\\
   {\it Dan Hendrycks, Kevin Gimpel 2016}
 \end{minipage}
@@ -1524,7 +1531,7 @@ GPU VRAM and spawn it, ssh to it then copy the inference files and folders to th
 before running the pipeline, and then worrying about destroring the instance before our expenses
 gets too high, let's simplify things a bit shall we! As on-demand as we can get and with just focusing on
 the Python code with a bit of sprinkling of decorators, 
-I'd like to go into this platform called Modal\sidecite{24}\\
+I'd like to go into this platform called Modal{\maincitecount}\\
 \customtext{xtitle}{0em}{Configuring Modal}\\
 After installing Modal, you can run a python file using
 \begin{lstlisting}[language=bash,basicstyle=\ttfamily\footnotesize]
@@ -1565,7 +1572,7 @@ def func():
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{24}$
+  {\sidecitecount}
   \url{https://modal.com/docs/examples}
 \end{minipage}
 \end{figure}
@@ -1599,7 +1606,7 @@ will be
 CUDA not found
 CUDA not found
 \end{lstlisting}
-Modal runs on CPU by default for the remote compute, so let's add a GPU option\sidecite{25}, for now going for the T4.
+Modal runs on CPU by default for the remote compute, so let's add a GPU option{\maincitecount}, for now going for the T4.
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 import modal 
 app = modal.App()
@@ -1641,7 +1648,7 @@ Wed May 28 20:41:22 2025
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{25}$
+  {\sidecitecount} 
   \begin{itemize}[label=\imagebullet,left=0pt,topsep=0pt,parsep=0ex]
     \item T4 {\tiny $\sim$} {\color{black!40} 16GB VRAM}
     \item L4 {\tiny $\sim$} {\color{black!40} 24GB VRAM}
@@ -1701,7 +1708,7 @@ def download_model(
     ):
     # more code below ...
 \end{lstlisting}
-and by changing the function call as\sidecite{26} 
+and by changing the function call as{\maincitecount} 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 download_model.remote()
 \end{lstlisting}
@@ -1710,7 +1717,7 @@ download_model.remote()
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{26}$ ensure the huggingface secret is configured since Llama weights access requires 
+  {\sidecitecount} ensure the huggingface secret is configured since Llama weights access requires 
   authentication, and also remove the 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 from dotenv import load_dotenv 
@@ -1735,7 +1742,7 @@ work with the remote compute.
     \customtext{xtitle}{0em}{Choosing the right GPU}\\
 This is the core question for us to choose the GPU that fits our memory needs during inference whilst also 
 being economical but not by reducing the reliable output of tokens/sec. We cannot use the T4 because as this 
-equation states\sidecite{27}, the gpu memory (in GB) denoted as $M$ is given by 
+equation states{\maincitecount}, the gpu memory (in GB) denoted as $M$ is given by 
 \begin{align*}
     & M = \Bigg(\frac{P\times4B}{32/Q}\Bigg)\times1.2\\
     & \text{where}\\
@@ -1745,7 +1752,7 @@ equation states\sidecite{27}, the gpu memory (in GB) denoted as $M$ is given by
     & Q\ \text{\footnotesize $\sim$}\ \text{amount of bits for loading the model, 16 bits, 8 bits, or 4 bits}\\
     & 1.2\ \text{\footnotesize $\sim$}\ \text{20\% overhead of additional loading in GPU memory}
 \end{align*}
-For {\it Llama2 model 7B}, which obviously has 7B\sidecite{28} parameters, currently being inferenced at full precision, 
+For {\it Llama2 model 7B}, which obviously has 7B{\maincitecount} parameters, currently being inferenced at full precision, 
 hence yielding $Q$ as 32, the lower bound for GPU is then 
 \begin{align*}
     &M=\Bigg(\frac{7\times10^9\times4}{32/32}\Bigg)\times1.2\\
@@ -1765,19 +1772,19 @@ class PIPELINE:
     device = "cuda"
 \end{lstlisting}
 and interesting changes to the {\it \footnotesize \_\_init\_\_} and the {\it \footnotesize inference} 
-methods\sidecite{29}.
+methods{\maincitecount}.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  $^{27}$ \href{https://training.continuumlabs.ai/infrastructure/data-and-memory/calculating-gpu-memory-for-serving-llms}{Calculating GPU memory for serving LLMs}
+  {\sidecitecount} \href{https://training.continuumlabs.ai/infrastructure/data-and-memory/calculating-gpu-memory-for-serving-llms}{Calculating GPU memory for serving LLMs}
   \vspace{2em}\\
-  $^{28}$ what if we didn't know the number of parameters? Well for starters, we can get the parameters of filters in convolution layers by knowing the number of filters
+  {\sidecitecount} what if we didn't know the number of parameters? Well for starters, we can get the parameters of filters in convolution layers by knowing the number of filters
   and the number of channels per each input to that layer and the kernel size (depthwise stack of kernels form a filter). For a Linear layer,
   we get the size of the weight matrix and the bias to compute the parameters in that layer.
   \vspace{2em}\\
-  $^{29}$
+  {\sidecitecount}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
     def __init__(self, device):
         # ...
@@ -1822,7 +1829,7 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
+    \customtext{xtitle}{0em}{The spark 20 pages after}\\
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
@@ -1833,7 +1840,22 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 \end{minipage}
 \end{figure}
 % ==================================================
-% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
+lorem ipsum dwffffef
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+\end{minipage}
+\end{figure}
 % ==================================================
 \pagebreak
 % PAGE ###
