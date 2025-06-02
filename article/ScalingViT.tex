@@ -1856,8 +1856,6 @@ This is a very interesting and inspiring story. It is the story of a young girl 
     Given the interesting nature of Transformers of being computationally efficient and scalable, allowing training models of
     unprecedented size with no sign of saturating performance, and convolutional architectures being so good at computer vision,
     the research on {\it ViTs} aimed at improving Transformer models for image capabilities.
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -1886,14 +1884,88 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 21
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
-lorem ipsum dwffffef
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+    \customtext{xtitle}{0em}{Dumbing down Llama2}\\
+First looking at the inner most part of Llama2, the Scaled Dot Product Attention, the rotary 
+positional embedding to the queries and keys is removed and instead the GPT-2 absolute positional 
+embeddings used, however in this case the image patches are considered instead of tokens.
+\begin{figure}[H]
+    \begin{tikzpicture}[RIR/.style={draw=black,thick,rectangle},AR/.style={->,thick,>=stealth}]
+        \tiny\virgil
+        % FIRST NODE
+        \node[RIR,fill=sgreen] (re) {
+        \parbox[t][5.1cm][t]{3.5cm}{\centering
+        rotary position embeddings to the queries and keys
+        }};
+        % SECOND NODE
+        \node[RIR,fill=sorange,anchor=west] (pe)
+        at ($(re.east)+(1,0)$) {\parbox[t][3.8cm][t]{3.8cm}{\centering
+        absolute position embeddings
+        }};
+        % THIRD NODE
+        \node[RIR,fill=sorange,anchor=north] (extrape)
+        at ($(pe.south)+(0,-1)$) {\parbox[t][3.8cm][t]{3.8cm}{\centering
+        image patches embeddings\\
+        \color{red} feeling lucky, will revise later!!!
+        }};
+        % EXPLAIN BELOW THE FIRST NODE
+        % QUERY
+        \draw[AR] ($(re.north)+(0.5,-1)$) -- node[right]{
+            \parbox{3cm}{$Q$\\\color{red!60}(Batch,\\SeqLen,\\Heads,\\HDim)}
+            } ++ (0,-1.5);
+        % KEY
+        \draw[AR] ($(re.north)+(-0.5,-1)$) -- node[right]{
+            \parbox{3cm}{$K$\\\color{red!60}(Batch,\\SeqLen,\\Heads,\\HDim)}
+        } ++ (0,-1.5) node[name=Kend]{};
+        % RE DIAGRAM
+        \node[RIR,anchor=north,fill=sgreen!70] (rediag) at ($(Kend)+(0.5,0)$) {
+            \includegraphics[width=0.15\textwidth]{images/rotations.png}
+        };
+        % VALUE
+        \draw[AR] ($(re.north)+(-1.7,-1)$) -- node[right]{
+            \parbox{3cm}{$V$\\\color{red!60}(Batch,\\Heads,\\SeqLen,\\HDim)}
+        } ++ (0,-3.5) node[name=Vend]{};
+        % TRANSPOSE ARROWS
+        \draw[AR] ($(rediag.south)+(0.5,0)$) -- node[right]{
+            \parbox{3cm}{$Q$\\\color{red!60}\fontsize{5}{4}\selectfont transpose\\to\\V\\dims}
+        } ++ (0,-1);
+        \draw[AR] ($(rediag.south)+(-0.5,0)$) -- node[right]{
+            \parbox{3cm}{$K$\\\color{red!60}\fontsize{5}{4}\selectfont transpose\\to\\V\\dims}
+        } ++ (0,-1);
+        % EXPLAIN BELOW THE SECOND NODE
+        \node (tok) at ($(pe.north)+(1,-1)$) {tokens};
+        \node (pos) at ($(pe.north)+(-0.7,-1)$) {
+        \parbox{2.5cm}{
+            \centering position ids\\
+            \color{red!60}\fontsize{6}{4}\selectfont 
+            i.e. arange(SeqLen)}};
+            \draw[AR] (tok.south) --++ (0,-0.7) node[name=tend]{};
+            \draw[AR] (pos.south) --++ (0,-0.5) node[name=pend]{};
+            \node[RIR,anchor=north,fill=spurple] (temb) at (tend) {\parbox{1.3cm}{\centering Embedding\\(Vocab,Dim)}};
+            \node[RIR,anchor=north,fill=spurple] (pemb) at (pend) {\parbox{1.3cm}{\centering Embedding\\(SeqLen,Dim)}};
+            \draw[AR] (pemb.south) |- ($(pemb.south)+(0.9,-0.8)$) node[name=joint,inner sep=0]{} --++ (0,-0.5);
+            \draw[AR,-] (temb.south) |- (joint.west);
+        % EXPLAIN BELOW THE THIRD NODE
+        \node (tok) at ($(extrape.north)+(1,-1)$) {image};
+        \node (pos) at ($(extrape.north)+(-0.7,-1)$) {
+        \parbox{2.5cm}{
+            \centering num patches}};
+            \draw[AR] (tok.south) --++ (0,-0.7) node[name=tend]{};
+            \draw[AR] (pos.south) --++ (0,-0.5) node[name=pend]{};
+            \node[RIR,anchor=north,fill=spurple] (temb) at (tend) {\parbox{1.3cm}{\centering Embedding\\(Vocab,Dim)}};
+            \node[RIR,anchor=north,fill=spurple] (pemb) at (pend) {\parbox{1.3cm}{\centering Embedding\\(SeqLen,Dim)}};
+            \draw[AR] (pemb.south) |- ($(pemb.south)+(0.9,-0.8)$) node[name=joint,inner sep=0]{} --++ (0,-0.5);
+            \draw[AR,-] (temb.south) |- (joint.west);
+        % MAIN ARROWS
+        \draw[AR] (re.east) -- (pe.west);
+        \draw[AR] (pe.south) -- (extrape.north);
+    \end{tikzpicture}
+    \vspace{1em}\\
+    \customtitle{Changes to the MHA}
+\end{figure}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -1903,12 +1975,42 @@ lorem ipsum dwffffef
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 22
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
-lorem ipsum dwffffef
+    \customtitle{Changes to the Transformer Block}
+    Within the Transformer Block, the normalization is now changed from {\it RMSNorm}
+    to {\it layerNorm}, computing the norm for the inputs before the attention and 
+    the feedforward blocks.
+    \begin{tikzpicture}[RIR/.style={draw=black,thick,rectangle},AR/.style={->,thick,>=stealth}]
+        \scriptsize 
+        % RMS Pre-Normalization
+        \node[RIR,fill=sblue,inner sep=5pt] (prenorm) {\parbox{1.2cm}{\centering RMSNorm}};
+        % MHA Block (Abstracted as already iimplemented)
+        \node[RIR,fill=sorange,anchor=north] (mha) at ($(prenorm.south)+(0,-0.4)$) {
+            \parbox{2cm}{\centering Multi-Head Attention
+            }};
+        % Add the Attention Output and the original Input
+        \draw[<-,thick,>=stealth] (prenorm.north) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,0.7) node[pos=1.2]{$x$};
+        % Implement the RMS Again
+        \node[RIR,anchor=north,fill=sgreen, inner ysep=5pt] (prermsffn) at ($(mha.south)+(0,-1)$) {
+            \parbox{1.5cm}{\centering RMSNorm}
+            };
+        % FFN after the normalization
+        \node[RIR,fill=red!30,anchor=north] (L1) at ($(prermsffn.south)+(0,-0.5)$) {\parbox{2cm}{\centering Swish-Gated Linear unit}};
+        % ARRROWS 
+        % PreNorm to MHA
+        \draw[AR] (prenorm.south) -- (mha.north);
+        % MHA to FFN VIA RMS NORM AGAIN
+        \draw[AR] (mha.south) -- node[pos=0.3,name=conc1,inner sep=0]{} node[pos=0.7,name=conc2,inner sep=0]{} (prermsffn.north);
+        \draw[->,thick,>=stealth] (fromx) -- ++ (1.5,0) |- (conc1.west);
+        \draw[AR] (prermsffn.south) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.north);
+        % L1 TO OUT
+        \draw[AR] (L1.south) -- node[pos=0.5,inner sep=0,name=conc3]{} ++ (0,-0.8);
+        % RMS AGAIN TO OUT
+        \draw[AR] (conc2.north) --++ (1.5,0) |- (conc3.north);
+    \end{tikzpicture}\\
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
