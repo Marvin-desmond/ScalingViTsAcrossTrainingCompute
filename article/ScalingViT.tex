@@ -1885,7 +1885,7 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Dumbing down Llama2}\\
+    \customtext{xtitle}{0em}{Dumbing down Llama2 to base ViT}\\
 First looking at the inner most part of Llama2, the Scaled Dot Product Attention, the rotary 
 positional embedding to the queries and keys is removed and instead the GPT-2 absolute positional 
 embeddings used, however in this case the image patches are considered instead of tokens.
@@ -1906,7 +1906,7 @@ embeddings used, however in this case the image patches are considered instead o
         \node[RIR,fill=sorange,anchor=north] (extrape)
         at ($(pe.south)+(0,-1)$) {\parbox[t][3.8cm][t]{3.8cm}{\centering
         image patches embeddings\\
-        \color{red} feeling lucky, will revise later!!!
+        % \color{red} feeling lucky, will revise later!!!
         }};
         % EXPLAIN BELOW THE FIRST NODE
         % QUERY
@@ -1946,14 +1946,14 @@ embeddings used, however in this case the image patches are considered instead o
             \draw[AR] (pemb.south) |- ($(pemb.south)+(0.9,-0.8)$) node[name=joint,inner sep=0]{} --++ (0,-0.5);
             \draw[AR,-] (temb.south) |- (joint.west);
         % EXPLAIN BELOW THE THIRD NODE
-        \node (tok) at ($(extrape.north)+(1,-1)$) {image};
+        \node (tok) at ($(extrape.north)+(1,-1)$) {\parbox{3cm}{\centering flattened image\\patches}};
         \node (pos) at ($(extrape.north)+(-0.7,-1)$) {
         \parbox{2.5cm}{
             \centering num patches}};
-            \draw[AR] (tok.south) --++ (0,-0.7) node[name=tend]{};
+            \draw[AR] (tok.south) --++ (0,-0.4) node[name=tend]{};
             \draw[AR] (pos.south) --++ (0,-0.5) node[name=pend]{};
-            \node[RIR,anchor=north,fill=spurple] (temb) at (tend) {\parbox{1.3cm}{\centering Embedding\\(Vocab,Dim)}};
-            \node[RIR,anchor=north,fill=spurple] (pemb) at (pend) {\parbox{1.3cm}{\centering Embedding\\(SeqLen,Dim)}};
+            \node[RIR,anchor=north,fill=spurple] (temb) at (tend) {\parbox{1.3cm}{\centering map to D dimensions}};
+            \node[RIR,anchor=north,fill=spurple] (pemb) at (pend) {\parbox{1.6cm}{\centering Embedding\\(NPatches,Dim)}};
             \draw[AR] (pemb.south) |- ($(pemb.south)+(0.9,-0.8)$) node[name=joint,inner sep=0]{} --++ (0,-0.5);
             \draw[AR,-] (temb.south) |- (joint.west);
         % MAIN ARROWS
@@ -1961,7 +1961,66 @@ embeddings used, however in this case the image patches are considered instead o
         \draw[AR] (pe.south) -- (extrape.north);
     \end{tikzpicture}
     \vspace{1em}\\
-    \customtitle{Changes to the MHA}
+    Moreover,{\it ViT} has no masking of the intermediate attention scores hence its attention mechanism is non-causal.\\
+    Within the Transformer Block, normalization changes from \\{\it RMSNorm}
+    to {\it LayerNorm}, computed for the inputs before the attention and 
+    the feedforward blocks.\\
+    \begin{tikzpicture}[RIR/.style={draw=black,thick,rectangle},AR/.style={->,thick,>=stealth}]
+        \scriptsize 
+        % RMS Pre-Normalization
+        \node[RIR,fill=sblue,inner sep=5pt] (prenorm) {\parbox{1.2cm}{\centering RMSNorm}};
+        % MHA Block (Abstracted as already iimplemented)
+        \node[RIR,fill=sorange,anchor=north] (mha) at ($(prenorm.south)+(0,-0.4)$) {
+            \parbox{2cm}{\centering Multi-Head Attention
+            }};
+        % Add the Attention Output and the original Input
+        \draw[<-,thick,>=stealth] (prenorm.north) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,0.5) node[pos=1.2]{$x$};
+        % Implement the RMS Again
+        \node[RIR,anchor=north,fill=sgreen, inner ysep=5pt] (prermsffn) at ($(mha.south)+(0,-1)$) {
+            \parbox{1.5cm}{\centering RMSNorm}
+            };
+        % FFN after the normalization
+        \node[RIR,fill=red!30,anchor=north] (L1) at ($(prermsffn.south)+(0,-0.5)$) {\parbox{2cm}{\centering Swish-Gated Linear unit}};
+        % ARRROWS 
+        % PreNorm to MHA
+        \draw[AR] (prenorm.south) -- (mha.north);
+        % MHA to FFN VIA RMS NORM AGAIN
+        \draw[AR] (mha.south) -- node[pos=0.3,name=conc1,inner sep=0]{} node[pos=0.7,name=conc2,inner sep=0]{} (prermsffn.north);
+        \draw[->,thick,>=stealth] (fromx.north) -- ++ (1.5,0) |- (conc1.west);
+        \draw[AR] (prermsffn.south) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.north);
+        % L1 TO OUT
+        \draw[AR] (L1.south) -- node[pos=0.5,inner sep=0,name=conc3]{} ++ (0,-0.8);
+        % RMS AGAIN TO OUT
+        \draw[AR] (conc2.north) --++ (1.5,0) |- (conc3.north);
+        % ARROW CHANGE TO 
+        \node[anchor=west] at ($(mha.east)+(1,-1)$) {\Huge $\Rightarrow$};
+        % SECOND ONE FOR VIT
+        % LayerNorm1
+        \node[RIR,fill=sblue,inner sep=5pt] (prenorm) at ($(prenorm.east)+(4,0)$) {\parbox{1.5cm}{\centering LayerNorm}};
+        % MHA Block (Abstracted as already iimplemented)
+        \node[RIR,fill=sorange,anchor=north] (mha) at ($(prenorm.south)+(0,-0.4)$) {
+            \parbox{2cm}{\centering Multi-Head Attention
+            }};
+        % Add the Attention Output and the original Input
+        \draw[<-,thick,>=stealth] (prenorm.north) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,0.5) node[pos=1.2]{$x$};
+        % Implement the RMS Again
+        \node[RIR,anchor=north,fill=sgreen, inner ysep=5pt] (prermsffn) at ($(mha.south)+(0,-1)$) {
+            \parbox{1.5cm}{\centering LayerNorm}
+            };
+        % FFN after the normalization
+        \node[RIR,fill=red!30,anchor=north] (L1) at ($(prermsffn.south)+(0,-0.5)$) {\parbox{2cm}{\centering MLP \it (GELU\\non-linearity)}};
+        % ARRROWS 
+        % PreNorm to MHA
+        \draw[AR] (prenorm.south) -- (mha.north);
+        % MHA to FFN VIA RMS NORM AGAIN
+        \draw[AR] (mha.south) -- node[pos=0.3,name=conc1,inner sep=0]{} node[pos=0.7,name=conc2,inner sep=0]{} (prermsffn.north);
+        \draw[->,thick,>=stealth] (fromx.north) -- ++ (1.5,0) |- (conc1.west);
+        \draw[AR] (prermsffn.south) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.north);
+        % L1 TO OUT
+        \draw[AR] (L1.south) -- node[pos=0.5,inner sep=0,name=conc3]{} ++ (0,-0.8);
+        % RMS AGAIN TO OUT
+        \draw[AR] (conc2.north) --++ (1.5,0) |- (conc3.north);
+    \end{tikzpicture}
 \end{figure}
 \end{minipage}%
 \hspace{25pt}
@@ -1976,38 +2035,10 @@ embeddings used, however in this case the image patches are considered instead o
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtitle{Changes to the Transformer Block}
-    Within the Transformer Block, the normalization is now changed from {\it RMSNorm}
-    to {\it layerNorm}, computing the norm for the inputs before the attention and 
-    the feedforward blocks.
-    \begin{tikzpicture}[RIR/.style={draw=black,thick,rectangle},AR/.style={->,thick,>=stealth}]
-        \scriptsize 
-        % RMS Pre-Normalization
-        \node[RIR,fill=sblue,inner sep=5pt] (prenorm) {\parbox{1.2cm}{\centering RMSNorm}};
-        % MHA Block (Abstracted as already iimplemented)
-        \node[RIR,fill=sorange,anchor=north] (mha) at ($(prenorm.south)+(0,-0.4)$) {
-            \parbox{2cm}{\centering Multi-Head Attention
-            }};
-        % Add the Attention Output and the original Input
-        \draw[<-,thick,>=stealth] (prenorm.north) -- node[name=fromx,pos=0.65,inner sep=0pt]{} ++ (0,0.7) node[pos=1.2]{$x$};
-        % Implement the RMS Again
-        \node[RIR,anchor=north,fill=sgreen, inner ysep=5pt] (prermsffn) at ($(mha.south)+(0,-1)$) {
-            \parbox{1.5cm}{\centering RMSNorm}
-            };
-        % FFN after the normalization
-        \node[RIR,fill=red!30,anchor=north] (L1) at ($(prermsffn.south)+(0,-0.5)$) {\parbox{2cm}{\centering Swish-Gated Linear unit}};
-        % ARRROWS 
-        % PreNorm to MHA
-        \draw[AR] (prenorm.south) -- (mha.north);
-        % MHA to FFN VIA RMS NORM AGAIN
-        \draw[AR] (mha.south) -- node[pos=0.3,name=conc1,inner sep=0]{} node[pos=0.7,name=conc2,inner sep=0]{} (prermsffn.north);
-        \draw[->,thick,>=stealth] (fromx) -- ++ (1.5,0) |- (conc1.west);
-        \draw[AR] (prermsffn.south) -- node[pos=0.8,inner sep=0pt,name=midtoir]{} (L1.north);
-        % L1 TO OUT
-        \draw[AR] (L1.south) -- node[pos=0.5,inner sep=0,name=conc3]{} ++ (0,-0.8);
-        % RMS AGAIN TO OUT
-        \draw[AR] (conc2.north) --++ (1.5,0) |- (conc3.north);
-    \end{tikzpicture}\\
+    \customtext{xtitle}{0em}{Understanding the image embeddings for ViT}\\
+    Going onto the interesting part of what makes this pioneering research awesome, 
+    is how the image patches is handled.
+    As described in {\it page 3 section 3.1} of the paper\sidecite{33},
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
@@ -2024,7 +2055,7 @@ embeddings used, however in this case the image patches are considered instead o
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
-lorem ipsum dwffffef
+lorem ipsum
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
