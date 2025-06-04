@@ -2,7 +2,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx} % Allows you to insert figures
 \usepackage{amsmath} % Allows you to do equations
-\usepackage{import}
+% \usepackage{amssymb} BREAKING LAYOUT, WILL LOOK INTO IT SOON
 % AVOID SETSPACE WHICH RESETS SPACING
 \usepackage{enumitem} % for list items
 \usepackage{tikz}
@@ -15,12 +15,10 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[backend=bibtex, language=auto, autolang=other, bibencoding=utf8]{biblatex}
 \usepackage{fontspec}
-\usepackage{csquotes}
 \usepackage{geometry} % Formats the paper size, orientation, and margins
 
 \geometry{
  a4paper,
-%  total={8.5in,11in},
  left=20mm,
  top=20mm,
  }
@@ -64,7 +62,6 @@
 \definecolor{sgreen}{HTML}{CCE7CF}
 \definecolor{spurple}{HTML}{C5BEDE}
 
-\usepackage{xcolor}
 \definecolor{BasePythonColor}{HTML}{C678DC}
 \usepackage{listings}
 \lstdefinestyle{python}{
