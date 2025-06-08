@@ -6,7 +6,7 @@
 % AVOID SETSPACE WHICH RESETS SPACING
 \usepackage{enumitem} % for list items
 \usepackage{tikz}
-\usetikzlibrary{calc, shapes.geometric,matrix}
+\usetikzlibrary{calc, shapes.geometric,matrix,decorations.pathreplacing}
 \usepackage[latte,styleAll]{catppuccinpalette}
 \usepackage{float} % for \begin{figure}[H]
 \usepackage{caption}
@@ -15,6 +15,7 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[backend=bibtex, language=auto, autolang=other, bibencoding=utf8]{biblatex}
 \usepackage{fontspec}
+\usepackage{xstring}
 \usepackage{geometry} % Formats the paper size, orientation, and margins
 
 \geometry{
@@ -2039,18 +2040,19 @@ embeddings used, however in this case the image patches are considered instead o
     Going onto the interesting part of what makes this pioneering research awesome, 
     is how the image patches is handled.
     As described in {\it page 3 section 3.1} of the paper\sidecite{33},
-    \vspace{1em}\\
+    % \vspace{1em}\\
     {\it\small we reshape the image $\text{x}\in R^{H\times W\times C}$ into a 
     sequence of flattened 2D patches $\text{x}_p\in R^{N\times (P^2\cdot C)}$,
     where $(H,W)$ is the resolution of the original image, $C$ is the number 
     of channels, $(P,P)$ is the resolution of each image patch, and $N = HW/P^2$ 
     is the resulting number of patches, which also serves as the effective 
     input sequence length for the Transformer.}
-    \vspace{1em}\\
-    Let's implement this process in two ways
+    \vspace{0.5em}\\
+    Let's implement this process in three ways
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
         \item using torch unfold
         \item using einops Rearrange
+        \item using torch convolution
       \end{itemize}
       \vspace{1em}
       \customtitle{torch unfold}
@@ -2085,7 +2087,6 @@ embeddings used, however in this case the image patches are considered instead o
         28 & 29 & 30 & 31 \\
         };
         \end{scope}
-        
         \begin{scope}[opacity=0.75]
         \node[matrixlayer=blue] (m1){
         0 & 1 & 2 & 3 \\
@@ -2219,12 +2220,245 @@ def showPatches(patches, N, P):
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 24
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The next big thing, einops\maincitecount}\\
+    This library greatly simplifies a lot of incredible operations, and is 
+    greatly used even in simplifying high dimensional matrix-multiplication 
+    heavy layers in many model graphs.\\
+    The docs is wonderful and on the side notes for in-depth review. 
+    In this case, we want to get the image dimensions, and then get the 
+    height and width as integer multiples of the patch size, but we need to 
+    be cautious on how we handle the channel dimensions, that is, how we translate 
+    the unfold operation as either channel dimensions first or spatial dimensions
+    first.
+    This change in dimensions is implemented using einops as     
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+from einops.layers.torch import Rearrange
+rearr = Rearrange(
+    'b c (h p1) (w p2) -> b (c p1 p2) (h w)', 
+    p1 = P, p2 = P)
+\end{lstlisting}
+considering that the image is already a {4D} tensor. The above operations says,
+hey, let's take subsets of the spatial dimensions across all channels, then 
+rearrange the dimensions to a batch of these tensors of size {\small$P^2\cdot C$},
+$N$ of such. Reminder that this is the transpose of $x_p$.
+It can be invoked to get the image patches as below which then gives the 
+same results as the visual just above.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+patches_again = rearr(image)
+showPatches(patches_again,N,P)
+\end{lstlisting}
+\customtitle{using torch convolution}
+I've always loved convolution, because I love signal processing, and I love image processing,
+and I love Computer Vision. And convolution, this operation, is core in many topics across 
+these domains.\\
+Convolution neural networks is inspired by the biological cortex and I've gone through it in-depth 
+in my course\maincitecount.
+\begin{figure}[H]
+    \begin{tikzpicture}[
+    RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=5pt, inner ysep=5pt},
+    AR/.style={>=stealth,thick,->}
+    ]
+    % \begin{scope}[shift={(45:1.5)}]
+    % \node[RIR,fill=sgreen] (m3){
+    % hello
+    % };
+    % \end{scope}
+    % \begin{scope}[shift={(45:1)}]
+    % \node[RIR,fill=sorange] (m2){
+    % hello
+    % };
+    % \end{scope}
+    % \begin{scope}[shift={(45:0)}]
+    % \node[RIR,fill=spurple] (m1){
+    % hello
+    % };
+    % \end{scope}
+    \def\colors{sgreen,spurple,sorange,syellow,sblue,sstart}
+        % \foreach \Z in {0,0.5,1,1.5}
+        %     {\draw[fill=red,draw=red!10] (-1,-1,\Z) rectangle (2,2,\Z);}
+        \foreach \color [count=\i from 0] in \colors {
+        \def\j{\i*.5}
+        %\StrBehind{\color}{s}[\hello]
+        %\draw[fill=\color,draw=\hello,thick,rounded corners=2pt] (-1,-1,\j) rectangle (2,2,\j);
+        \draw[fill=\color,draw=black,thick,rounded corners=2pt] (-0.5,-0.5,\j) rectangle (0.5,0.5,\j);
+        \ifnum\i=2\breakforeach\fi
+        }
+        \draw[AR,<->](0,-1.15) -- node[midway,below,rotate=40]{
+        \fontsize{5}{4}\selectfont \bf 3 channels
+        } ++ (0.7,0.6);
+        \draw[AR,<->](0,-1.15) -- node[midway,below]{\tiny 4} ++ (-0.8,0);
+        \draw[AR,<->](-1.1,-0.8) -- node[midway,left]{\tiny 4} ++ (0,0.8);
+        \node[red] at (-0.5,-1.8) {\usebox{\convimage}};
+        \node[red] at (6.5,-1.8) {\usebox{\convkernels}};
+
+        \def\colors{syellow,sblue,sstart}          
+        \begin{scope}[shift={(4.5, 1, 0)}]
+        \foreach \color [count=\i from 0] in \colors {
+        \def\j{\i*.3}
+        \node[draw=black, fill=\color, thick, rounded corners=2pt, minimum width=1cm, minimum height=1cm] 
+            at (0, 0, \j) (kerns-\i) {};
+        \ifnum\i=2\breakforeach\fi
+        }
+        \node[RIR,fill=sorange,draw=black,thin,rounded corners=0,inner sep=2pt] 
+        at ($(kerns-1.south)+(0,-0.5)$){\tiny bias};
+        \end{scope}
+        \begin{scope}[shift={(3.5, 0, 0)}]
+        \foreach \color [count=\i from 0] in \colors {
+        \def\j{\i*.3}
+        \node[draw=black, fill=\color, thick, rounded corners=2pt, minimum width=1cm, minimum height=1cm] 
+            at (0, 0, \j) (kerns-\i) {};
+        \ifnum\i=2\breakforeach\fi
+        }
+        \node[RIR,fill=sorange,draw=black,thin,rounded corners=0,inner sep=2pt] 
+        at ($(kerns-1.south)+(0,-0.5)$){\tiny bias};
+        \end{scope}
+        \begin{scope}[shift={(2.5, -1, 0)}]
+        \foreach \color [count=\i from 0] in \colors {
+        \def\j{\i*.3}
+        % \draw[fill=\color,draw=black,thick,rounded corners=2pt] (-0.5,-0.5,\j) rectangle (0.5,0.5,\j);
+        \node[draw=black, fill=\color, thick, rounded corners=2pt, minimum width=1cm, minimum height=1cm] 
+            at (0, 0, \j) (kerns-\i) {};
+        \ifnum\i=2\breakforeach\fi
+        }
+        \draw [decorate,decoration={brace,mirror,raise=4ex},red] (-0.2,-0.3) -- (0.2,0) node[yshift=-2em,xshift=1.5em,midway,rotate=40] {\tiny filter};
+        \node[RIR,fill=sorange,draw=black,thin,rounded corners=0,inner sep=2pt] 
+        at ($(kerns-1.south)+(0,-0.5)$){\tiny bias};
+        \draw [AR,red!70] ($(kerns-0.south)+(-0.9,-0.9)$) 
+        node[below,inner sep=0]{\tiny kernel} to 
+        [out=80,in=-90] ($(kerns-0.south)+(-0.3,-0.2)$);
+        \end{scope}
+        % OUTPUT
+        \begin{scope}[shift={(7.5, 0.5, 0)}]
+    \def\colors{spurple,sorange,sblue}
+        \foreach \color [count=\i from 0] in \colors {
+        \def\j{\i*.3}
+        % \draw[fill=\color,draw=black,thick,rounded corners=2pt] (-0.5,-0.5,\j) rectangle (0.5,0.5,\j);
+        \node[draw=black, fill=\color, thick, rounded corners=2pt, minimum width=1cm, minimum height=1cm] 
+            at (0, 0, \j) (kerns-\i) {};
+        \ifnum\i=2\breakforeach\fi
+        }
+        \node[anchor=west] at ($(kerns-2.east)+(0.4,0.5)$) {
+            \parbox{5cm}{
+                \tiny \it output size\vspace{0.3em}\\
+                $\Big\lfloor \frac{n+2p-f}{s}+1\Big\rfloor$\\
+                $\Big\lfloor \frac{4+0-2}{1}+1\Big\rfloor$
+                \vspace{0.3em}\\
+                output size is 3
+            }
+        };
+        \end{scope}
+    \end{tikzpicture}
+\end{figure}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  \sidecitecount \url{https://einops.rocks/pytorch-examples.html}\\
+  {\it Writing a better code with pytorch and einops}
+  \vspace{2em}\\
+  \sidecitecount \url{https://youcanjustbuild.com/courses/from-tensors-to-residual-learning/foundations}\\
+  {\it The foundations of residual learning}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+\begin{minipage}[t]{0.65\textwidth}
+\raggedright
+Using convolution to get the image patches, the kernel size will be the size of the 
+needed patch with the stride being the same, the output channels becomes D.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+patch_layer=nn.Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+\end{lstlisting}
+\customtitle{Now onto implementing the image embeddings}
+Note that as we understood from the side note\sidecite{38}, we have to transpose 
+how we actually got the patches to 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+    Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
+            p1=P,p2=P)
+\end{lstlisting}
+which then gives us the {2D} flattened patches 
+{\footnotesize $x_p\in R^{N\times(P^2\cdot C)}$}
+The layers that hence map the patches to the D dimensions linearly to give the
+{\it \color{xtitle} patch embeddings} is 
+constructed as\maincitecount
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+patches_layer = nn.Sequential(
+    Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
+    p1 = P, p2 = P),
+    nn.LayerNorm(patch_dim),
+    nn.Linear(patch_dim,dim))
+\end{lstlisting}    
+we then neeed to prepend a class token\maincitecount\ to the sequence of embedded patches\\
+$[\text{x}_{\text{class}};\text{x}_p^1\text{\bf E};\text{x}_p^2\text{\bf E};\cdots;\text{x}_p^N\text{\bf E}]$
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+patch_embs = patches_layer(image)
+cls_token = nn.Parameter(torch.randn(1, 1, dim))
+x = torch.cat((cls_token,patch_embs),dim=1)
+\end{lstlisting}
+\customtext{xtitle}{0em}{Adding positional embeddings to the patch embeddings}\\
+By simplifying their learning embedding from the advanced 2D-aware position 
+embedding due to no significant performance, the paper uses 1D position embeddings
+defined by {\small $E_{pos}\in R^{(N+1)\times D}$}.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+position_embeddings = nn.Parameter(
+    torch.randn(1,N+1,dim))
+\end{lstlisting}
+and now we add the resulting embedding to the positional embedding
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+x += pos_embeddings[:,(N+1)]
+\end{lstlisting}
+and that is it to give us the whole implementation as 
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  \sidecitecount the original ViT uses image resized to 256 with patch size of 
+  16 and D being 768 for {\it ViT-Base 16}. {\it patch\_dim} is basically $C\times P^2$.
+  \vspace{2em}\\
+  \sidecitecount In the interesting implementing of {\it Vision Transformers},
+  some {\it 10x} engineers opted for toggling between mean pooling and cls tokens 
+  computed with the original patch embeddings. You can see their awesome implementation 
+  of such in their codebase\\ 
+  \url{https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/vit.py}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
 % PAGE ###
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{NEW PAGE PENDING.......}\\
-lorem ipsum
+    \customtext{xtitle}{0em}{The next big thing, einops}\\
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class ImageEmbeddings(nn.Module):
+    def __init__(self, H, W, C, P, dim):
+        super(ImageEmbeddings,self).__init__()
+        N = int((H*W)/(P**2)); self.N = N
+        assert H%N==0 and W%N==0, \
+            "image size must be integer multiple of patch"
+        patch_dim = C*P**2
+        self.patch_layers = nn.Sequential(
+            Rearrange(
+            'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', 
+            p1 = P, p2 = P),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim,dim),
+        )
+        self.class_tokens = nn.Parameter(torch.randn(1, 1, dim))
+        self.position_embeddings = nn.Parameter(torch.randn(1,N+1,dim))
+    def forward(self,image):
+        x = self.patch_layers(image)
+        x = torch.cat((self.class_tokens,x),dim=1)
+        return += self.position_embeddings[:,:(self.N+1)]
+\end{lstlisting}
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
