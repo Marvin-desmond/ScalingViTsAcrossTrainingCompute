@@ -2048,11 +2048,10 @@ embeddings used, however in this case the image patches are considered instead o
     is the resulting number of patches, which also serves as the effective 
     input sequence length for the Transformer.}
     \vspace{0.5em}\\
-    Let's implement this process in three ways
+    Let's implement this process in two ways
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
         \item using torch unfold
         \item using einops Rearrange
-        \item using torch convolution
       \end{itemize}
       \vspace{1em}
       \customtitle{torch unfold}
@@ -2167,7 +2166,7 @@ C,H,W=image.shape
 Let's of course initialize the unfold instance. We want to get, for now, 4 patches
 from the image, this means the patch size is
 \vspace{-1em}
-$$N=HW/P^2\Rightarrow 4=(240/P)^2\Rightarrow P=120$$
+{\small $$N=HW/P^2\Rightarrow 4=(240/P)^2\Rightarrow P=120$$}
 \vspace{-2em}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 P=120
@@ -2197,8 +2196,7 @@ to get
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
   \scriptsize 
-  \sidecitecount 
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+  \sidecitecount \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 import matplotlib.pyplot as plt
 
 def showPatches(patches, N, P):
@@ -2244,14 +2242,14 @@ rearr = Rearrange(
 considering that the image is already a {4D} tensor. The above operations says,
 hey, let's take subsets of the spatial dimensions across all channels, then 
 rearrange the dimensions to a batch of these tensors of size {\small$P^2\cdot C$},
-$N$ of such. Reminder that this is the transpose of $x_p$.
-It can be invoked to get the image patches as below which then gives the 
-same results as the visual just above.
+$N$ of such, dimensions denoted as {\it (1,$P^2\cdot C,N$)}. 
+Reminder that this is the transpose of $x_p$. It can be invoked to get the image 
+patches which then gives the same results as the visual just above.\maincitecount
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 patches_again = rearr(image)
 showPatches(patches_again,N,P)
 \end{lstlisting}
-\customtitle{using torch convolution}
+\customtitle{torch convolution}
 I've always loved convolution, because I love signal processing, and I love image processing,
 and I love Computer Vision. And convolution, this operation, is core in many topics across 
 these domains.\\
@@ -2356,49 +2354,56 @@ in my course\maincitecount.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \scriptsize 
-  \sidecitecount \url{https://einops.rocks/pytorch-examples.html}\\
-  {\it Writing a better code with pytorch and einops}
-  \vspace{2em}\\
-  \sidecitecount \url{https://youcanjustbuild.com/courses/from-tensors-to-residual-learning/foundations}\\
-  {\it The foundations of residual learning}
-\end{minipage}
-\end{figure}
-% ==================================================
-\pagebreak
-% PAGE ###
-\begin{figure}[!htb]
-\begin{minipage}[t]{0.65\textwidth}
 \raggedright
-Using convolution to get the image patches, the kernel size will be the size of the 
-needed patch with the stride being the same, the output channels becomes D.
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-patch_layer=nn.Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
-\end{lstlisting}
-\customtitle{Now onto implementing the image embeddings}
-Note that as we understood from the side note\sidecite{38}, we have to transpose 
+\scriptsize 
+\sidecitecount \url{https://einops.rocks/pytorch-examples.html}\\
+{\it Writing a better code with pytorch and einops}
+\vspace{2em}\\
+\sidecitecount Note that as we understood from \sidecite{38}, we have to transpose 
 how we actually got the patches to 
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
     Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
             p1=P,p2=P)
 \end{lstlisting}
 which then gives us the {2D} flattened patches 
-{\footnotesize $x_p\in R^{N\times(P^2\cdot C)}$}
-The layers that hence map the patches to the D dimensions linearly to give the
-{\it \color{xtitle} patch embeddings} is 
-constructed as\maincitecount
+{\tiny $x_p\in R^{N\times(P^2\cdot C)}$}.
+\vspace{2em}\\
+\sidecitecount \url{https://youcanjustbuild.com/courses/from-tensors-to-residual-learning/foundations}\\
+{\it The foundations of residual learning}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 25
+\begin{figure}[!htb]
+\begin{minipage}[t]{0.65\textwidth}
+\raggedright
+\customtitle{Now onto implementing the image embeddings}
+Using convolution, we implicitly get the image patches and linearly project to D dimensions
+directly.
+The kernel size becomes the size of the needed patch with the stride being the same, 
+the output channels size become D\maincitecount. This layer is also essential given it is 
+a trainable layer, as opposed to the two previously looked-into ops that weren't.
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-patches_layer = nn.Sequential(
-    Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
-    p1 = P, p2 = P),
-    nn.LayerNorm(patch_dim),
-    nn.Linear(patch_dim,dim))
-\end{lstlisting}    
-we then neeed to prepend a class token\maincitecount\ to the sequence of embedded patches\\
+patch_layer=nn.Conv2d(3, 768, kernel_size=16, stride=16)
+\end{lstlisting}
+Based on the output size from the convolution formula, we get  
+$$\Big\lfloor \frac{256 - 16}{16} + 1 \Big\rfloor=16$$
+which begets the output size of 16 \times 16 with 768 channels in the order 
+{\small $(1,768,16,16)$}. Looking into this output, it aligns more with 
+{\small $(1,D,\sqrt{N},\sqrt{N})$} when what we need is {\small $(1,N,D)$}.
+Hence, we consider two operations, combining the last two dimensions then transposing 
+the now new last two dimensions, programmatically implemented as\\ 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+in_ = torch.randn(1,3,256,256)
+out = patch_layer(in_)
+out = out.flatten(2) # flatten from dim 2, zero-indexed
+patch_embs = out.transpose(1,2)
+\end{lstlisting}
+The output of this projection is known as the {\it \color{xtitle} patch embeddings}.
+We then need to prepend a class token\maincitecount\ to the sequence of embedded patches\\
 $[\text{x}_{\text{class}};\text{x}_p^1\text{\bf E};\text{x}_p^2\text{\bf E};\cdots;\text{x}_p^N\text{\bf E}]$
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-patch_embs = patches_layer(image)
 cls_token = nn.Parameter(torch.randn(1, 1, dim))
 x = torch.cat((cls_token,patch_embs),dim=1)
 \end{lstlisting}
@@ -2436,29 +2441,25 @@ and that is it to give us the whole implementation as
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{The next big thing, einops}\\
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-class ImageEmbeddings(nn.Module):
-    def __init__(self, H, W, C, P, dim):
-        super(ImageEmbeddings,self).__init__()
-        N = int((H*W)/(P**2)); self.N = N
-        assert H%N==0 and W%N==0, \
-            "image size must be integer multiple of patch"
-        patch_dim = C*P**2
-        self.patch_layers = nn.Sequential(
-            Rearrange(
-            'b c (h p1) (w p2) -> b (h w) (p1 p2 c)', 
-            p1 = P, p2 = P),
-            nn.LayerNorm(patch_dim),
-            nn.Linear(patch_dim,dim),
-        )
-        self.class_tokens = nn.Parameter(torch.randn(1, 1, dim))
-        self.position_embeddings = nn.Parameter(torch.randn(1,N+1,dim))
-    def forward(self,image):
-        x = self.patch_layers(image)
-        x = torch.cat((self.class_tokens,x),dim=1)
-        return += self.position_embeddings[:,:(self.N+1)]
-\end{lstlisting}
+    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
+        lorem ipsum
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
+        lorem ipsum
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
