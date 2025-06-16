@@ -1529,7 +1529,7 @@ light cloud computes that effectively run inference pipelines.\\
     \customtext{xtitle}{0em}{First shot at inference}\\
 As much as we would want to look for the cloud instance on AWS with the highest
 GPU VRAM and spawn it, ssh to it then copy the inference files and folders to the remote instance 
-before running the pipeline, and then worrying about destroring the instance before our expenses
+before running the pipeline, and then worrying about destroying the instance before our expenses
 gets too high, let's simplify things a bit shall we! As on-demand as we can get and with just focusing on
 the Python code with a bit of sprinkling of decorators, 
 I'd like to go into this platform called Modal{\maincitecount}\\
@@ -1658,6 +1658,8 @@ Wed May 28 20:41:22 2025
     \item A100-80GB
     \item L40S {\tiny $\sim$} {\color{black!40} 48GB VRAM}
     \item H100 {\tiny $\sim$} {\color{black!40} 80GB VRAM}
+    \item H200 {\tiny $\sim$} {\color{black!40} 141GB VRAM}
+    \item B200 {\tiny $\sim$} {\color{black!40} 180GB VRAM}
   \end{itemize}
 \end{minipage}
 \end{figure}
@@ -2220,18 +2222,18 @@ def showPatches(patches, N, P):
 \pagebreak
 % PAGE 24
 \begin{figure}[!htb]
-    \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{The next big thing, einops\maincitecount}\\
-    This library greatly simplifies a lot of incredible operations, and is 
-    greatly used even in simplifying high dimensional matrix-multiplication 
-    heavy layers in many model graphs.\\
-    The docs is wonderful and on the side notes for in-depth review. 
-    In this case, we want to get the image dimensions, and then get the 
-    height and width as integer multiples of the patch size, but we need to 
-    be cautious on how we handle the channel dimensions, that is, how we translate 
-    the unfold operation as either channel dimensions first or spatial dimensions
-    first.
+\begin{minipage}[t]{0.65\textwidth}
+\raggedright
+\customtext{xtitle}{0em}{The next big thing, einops\maincitecount}\\
+This library greatly simplifies a lot of incredible operations, and is 
+greatly used even in simplifying high dimensional matrix-multiplication 
+heavy layers in many model graphs.\\
+The docs is wonderful and on the side notes for in-depth review. 
+In this case, we want to get the image dimensions, and then get the 
+height and width as integer multiples of the patch size, but we need to 
+be cautious on how we handle the channel dimensions, that is, how we translate 
+the unfold operation as either channel dimensions first or spatial dimensions
+first.
     This change in dimensions is implemented using einops as     
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 from einops.layers.torch import Rearrange
@@ -2251,7 +2253,7 @@ showPatches(patches_again,N,P)
 \end{lstlisting}
 \customtitle{torch convolution}
 I've always loved convolution, because I love signal processing, and I love image processing,
-and I love Computer Vision. And convolution, this operation, is core in many topics across 
+and I love Computer Vision. This operation is core in many topics across 
 these domains.\\
 Convolution neural networks is inspired by the biological cortex and I've gone through it in-depth 
 in my course\maincitecount.
@@ -2362,8 +2364,8 @@ in my course\maincitecount.
 \sidecitecount Note that as we understood from \sidecite{38}, we have to transpose 
 how we actually got the patches to 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
-    Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
-            p1=P,p2=P)
+Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
+        p1=P,p2=P)
 \end{lstlisting}
 which then gives us the {2D} flattened patches 
 {\tiny $x_p\in R^{N\times(P^2\cdot C)}$}.
@@ -2415,11 +2417,7 @@ defined by {\small $E_{pos}\in R^{(N+1)\times D}$}.
 position_embeddings = nn.Parameter(
     torch.randn(1,N+1,dim))
 \end{lstlisting}
-and now we add the resulting embedding to the positional embedding
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-x += pos_embeddings[:,(N+1)]
-\end{lstlisting}
-and that is it to give us the whole implementation as 
+which is then added to the augmented patch embeddings
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -2433,6 +2431,127 @@ and that is it to give us the whole implementation as
   computed with the original patch embeddings. You can see their awesome implementation 
   of such in their codebase\\ 
   \url{https://github.com/lucidrains/vit-pytorch/blob/main/vit_pytorch/vit.py}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+x += pos_embeddings[:,(N+1)]
+\end{lstlisting}
+and that is it to give us the whole implementation as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class ImageEmbeddings(nn.Module):
+    def __init__(self, H, W, P, dim):
+        super(ImageEmbeddings,self).__init__()
+        N = int((H*W)/(P**2)); self.N = N
+        assert H%P==0 and W%P==0, \
+          "image size must be integer multiple of patch"
+        self.conv_then_project = nn.Conv2d(
+            3,out_channels=dim,kernel_size=P,stride=P)
+        self.class_tokens = nn.Parameter(
+            torch.randn(1, 1, dim))
+        self.position_embeddings = nn.Parameter(
+            torch.randn(1,N+1,dim))
+    def forward(self,image):
+        x = self.conv_then_project(image)
+        x = x.flatten(2)
+        x = x.transpose(1,2)
+        x = torch.cat((self.class_tokens,x),dim=1)
+        x += self.position_embeddings[:,:(self.N+1)]
+        return x
+\end{lstlisting}
+\customtext{xtitle}{0em}{The Looping transformer Block}\\
+From the embeddings layer, ViT implements a loop of alternating MultiHeadAttention and MLP 
+blocks, shown previously in the {\it RMSNorm} to {\it LayerNorm} section, with LayerNorm applied before 
+every block, and residual connection after every block\maincitecount. As also discussed, the MultiHeadAttention is not 
+masked since it is bidirectional. The Hence, the resulting implementation for the MultiHeadAttention removes 
+RoPe mechanism and masking to be
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class MultiHeadAttention(nn.Module):
+    def __init__(self,d_in,d_out,n_heads,bias=True):
+        super(MultiHeadAttention,self).__init__()
+        assert d_out%n_heads==0, "d_out must be integer multiple of n_heads"
+        self.head_dim = int(d_out / n_heads)
+        self.n_heads = n_heads
+        self.Wq = nn.Linear(d_in,d_out,bias=bias)
+        self.Wk = nn.Linear(d_in,d_out,bias=bias)
+        self.Wv = nn.Linear(d_in,d_out,bias=bias)
+        self.Wo = nn.Linear(d_out,d_out,bias=bias)
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  \sidecitecount ViT-Base has the two blocks, MultiHeadAttention and MLP, looped 12 times, meaning 12 
+  layers of the Transformer Block. ViT-Base encompasses ViT-B/16 and ViT-B/32, with the values after the slash 
+  being for the patch sizes.
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+    # ...
+    def forward(self,x):
+        B,seq_len,d_in = x.shape
+        q = self.Wq(x); k = self.Wk(x); v = self.Wv(x)
+        q = q.view(B,seq_len,self.n_heads,self.head_dim)
+        k = k.view(B,seq_len,self.n_heads,self.head_dim)
+        v = v.view(B,seq_len,self.n_heads,self.head_dim)
+        q = q.transpose(1,2)
+        k = k.transpose(1,2)
+        v = v.transpose(1,2)
+        scores = q @ k.transpose(-1,-2)
+        scores = scores / k.shape[-1]**.5
+        norm_scores = nn.functional.softmax(scores,dim=-1)
+        y = norm_scores @ v
+        out = y.transpose(1,2).contiguous().view(
+               B,seq_len,d_in)
+        out = self.Wo(out)
+        return out 
+\end{lstlisting}
+The next block after the residual connection proceeding the MHA is
+two linear transformations separated by a GELU activation.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+class MLP(nn.Module):
+    def __init__(self,dim,hidden_dim,bias=True):
+        super(MLP,self).__init__()
+        self.fc1 = nn.Linear(dim,hidden_dim,bias=bias)
+        self.fc2 = nn.Linear(hidden_dim,dim,bias=bias)
+        self.act = nn.GELU(approximate='tanh')
+    def forward(self,x):
+        x = self.fc1(x)
+        x = self.fc2(self.act(x))
+        return x
+\end{lstlisting}
+And hence the complete Transformer Block with LayerNorm before and residual connection after the 
+{\it MHA} and the {\it MLP} is beautifully implemented as a PyTorch module as follows
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+class ViTBlock(nn.Module):
+    def __init__(self,CONFIG):
+        super(ViTBlock,self).__init__()
+        self.ln1 = nn.LayerNorm(CONFIG.D_IN)
+        self.attn = MultiHeadAttention(CONFIG.D_IN,CONFIG.D_OUT,CONFIG.HEADS)
+        self.ln2 = nn.LayerNorm(CONFIG.D_IN)
+        self.mlp = MLP(CONFIG.D_IN,CONFIG.HIDDEN_DIM)
+    def forward(self,x):
+        x = x + self.attn(self.ln1(x))
+        x = x + self.mlp(self.ln2(x))
+        return x
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
 \end{minipage}
 \end{figure}
 % ==================================================
