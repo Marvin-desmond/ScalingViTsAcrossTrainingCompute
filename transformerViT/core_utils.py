@@ -46,11 +46,11 @@ class MultiHeadAttention(nn.Module):
         scores = q @ k.transpose(-1,-2) # (batch,n_heads,seqlen,head_dim) x (batch,n_heads,head_dim,seqlen) => (batch,n_heads,seqlen,seqlen)
         scores = scores / k.shape[-1]**.5
         norm_scores = nn.functional.softmax(scores,dim=-1)
-        norm_scores = self.attn_dropout(norm_scores)
+        # norm_scores = self.attn_dropout(norm_scores)
         y = norm_scores @ v # (batch,n_heads,seqlen,seqlen) x (batch,n_heads,seqlen,head_dim) => (batch,n_heads,seqlen,head_dim)
         out = y.transpose(1,2).contiguous().view(batch,seq_len,d_in)
         out = self.Wo(out)
-        out = self.res_dropout(out)
+        # out = self.res_dropout(out)
         return out 
 
 class MLP(nn.Module):
@@ -86,18 +86,19 @@ def assign(left, right):
 
 def scatter_weights(left,right,mcs,part):
     if part == 0:
-        left = assign(left,right[:mcs//3,:])
+        return assign(left,right[:mcs//3,:])
     elif part == 1:
-        left = assign(left,right[mcs//3:2*mcs//3,:])
+        return assign(left,right[mcs//3:2*mcs//3,:])
     elif part == 2:
-        left = assign(left,right[-mcs//3:,:])
+        return assign(left,right[-mcs//3:,:])
+
 def scatter_biases(left,right,mcs,part):
     if part == 0:
-        left = assign(left,right[:mcs//3])
+        return assign(left,right[:mcs//3])
     elif part == 1:
-        left = assign(left,right[mcs//3:2*mcs//3])
+        return assign(left,right[mcs//3:2*mcs//3])
     elif part == 2:
-        left = assign(left,right[-mcs//3:])
+        return assign(left,right[-mcs//3:])
     
 def copy_model_weights(model, params):
     model.image_embeddings.conv_then_project.weight = assign(
@@ -122,17 +123,17 @@ def copy_model_weights(model, params):
         w_name = f'encoder.layers.encoder_layer_{i}.self_attention.in_proj_weight'
         b_name = f'encoder.layers.encoder_layer_{i}.self_attention.in_proj_bias'
         mcs = params[w_name].shape[0]
-        scatter_weights(model.vit_blocks[i].attn.Wq.weight,
+        model.vit_blocks[i].attn.Wq.weight = scatter_weights(model.vit_blocks[i].attn.Wq.weight,
                         params[w_name],mcs,0)
-        scatter_biases(model.vit_blocks[i].attn.Wq.bias,
+        model.vit_blocks[i].attn.Wq.bias = scatter_biases(model.vit_blocks[i].attn.Wq.bias,
                         params[b_name],mcs,0)
-        scatter_weights(model.vit_blocks[i].attn.Wk.weight,
+        model.vit_blocks[i].attn.Wk.weight = scatter_weights(model.vit_blocks[i].attn.Wk.weight,
                         params[w_name],mcs,1)
-        scatter_biases(model.vit_blocks[i].attn.Wk.bias,
+        model.vit_blocks[i].attn.Wk.bias = scatter_biases(model.vit_blocks[i].attn.Wk.bias,
                         params[b_name],mcs,1)
-        scatter_weights(model.vit_blocks[i].attn.Wv.weight,
+        model.vit_blocks[i].attn.Wv.weight = scatter_weights(model.vit_blocks[i].attn.Wv.weight,
                         params[w_name],mcs,2)
-        scatter_biases(model.vit_blocks[i].attn.Wv.bias,
+        model.vit_blocks[i].attn.Wv.bias = scatter_biases(model.vit_blocks[i].attn.Wv.bias,
                         params[b_name],mcs,2)
         model.vit_blocks[i].attn.Wo.weight = assign(
                                 model.vit_blocks[i].attn.Wo.weight,
