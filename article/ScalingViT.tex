@@ -18,6 +18,9 @@
 \usepackage{xstring}
 \usepackage{geometry} % Formats the paper size, orientation, and margins
 
+\usepackage{booktabs}
+\usepackage{siunitx}
+
 \geometry{
  a4paper,
  left=20mm,
@@ -139,7 +142,6 @@
 \begin{document}
 \include{codesintikz.tex}
 \linespread{1.2}\selectfont
-\title{GPGPU Programming with CUDA}
 \author{Marvin}
 \date{\today}
 
@@ -1875,8 +1877,8 @@ This is a very interesting and inspiring story. It is the story of a young girl 
    {\it Dosovitskiy et al. 2020}\\
    \vspace{2em}
    {\sidecitecount} 
-   \href{https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/community-content/vertex_model_garden/benchmarking_reports/jax_vit_benchmarking_report.md
-   }{ViT PyTorch vs JAX training benchmarks on Vertex AI Training Platform}\\
+   \href{https://github.com/GoogleCloudPlatform/vertex-ai-samples/blob/main/community-content/vertex_model_garden/benchmarking_reports/jax_vit_benchmarking_report.md}{
+    ViT PyTorch vs JAX training benchmarks on Vertex AI Training Platform}\\
    \vspace{2em}
    {\sidecitecount} \url{https://www.youtube.com/watch?v=eJFJRyXEHZ0}
    {\it Announcing Gemma 3n Preview: Powerful, Efficient, Mobile-First AI}
@@ -2435,7 +2437,7 @@ which is then added to the augmented patch embeddings
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 26
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
@@ -2494,7 +2496,7 @@ class MultiHeadAttention(nn.Module):
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 27
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
@@ -2532,8 +2534,9 @@ class MLP(nn.Module):
         x = self.fc2(self.act(x))
         return x
 \end{lstlisting}
-And hence the complete Transformer Block with LayerNorm before and residual connection after the 
-{\it MHA} and the {\it MLP} is beautifully implemented as a PyTorch module as follows
+And hence the complete Transformer Block with LayerNorm before and residual connection 
+after the {\it MHA} and the {\it MLP}\maincitecount\ is beautifully implemented as a 
+PyTorch module as follows
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
 class ViTBlock(nn.Module):
     def __init__(self,CONFIG):
@@ -2550,20 +2553,87 @@ class ViTBlock(nn.Module):
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \scriptsize 
+    \raggedright
+    \scriptsize 
+    \sidecitecount as shown in the figure at the end of page 21
 \end{minipage}
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 28
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
-        lorem ipsum
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+    And with that, the whole model stands out as 
+    \begin{tikzpicture}[
+    BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
+    RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=5pt, inner ysep=5pt},
+    AR/.style={>=stealth,thick,->}
+    ]   \scriptsize
+        \node[RIR, fill=sorange] (L1) {\parbox{3cm}{\centering flattened image patches\\project to D dimensions}};
+        \draw[AR,<-] (L1.north) -- ++ (0,0.5) node[pos=0.6,name=l1c,inner sep=0]{}  node[pos=1.1]{\virgil image};
+        \node[RIR, anchor=east, fill=sgreen] (L2) at  ($(L1.west)+(-1,-0.2)$) {\parbox{1.5cm}{\centering class tokens\\{\it (1,1,D)}}};
+        \node[RIR, anchor=west, fill=spurple] (L3) at  ($(L1.east)+(1,-0.3)$) {\parbox{2.5cm}{\centering position embeddings\\{\it (1,N+1,D)}}};
+        \node[RIR, anchor=north, fill=blue!10,draw=blue!60,dashed] (L4) at  ($(L1.south)+(1,-0.8)$) {\parbox[t][7.2cm][t]{6cm}{\raggedleft\virgil Transformer\\Block\\$\times L$}};
+        \node[RIR, anchor=north, fill=sstart] (L4) at  ($(L1.south)+(0,-1.2)$) {\parbox{2cm}{\centering LayerNorm}};
+        \node[RIR, anchor=north, fill=sblue] (L5) at  ($(L4.south)+(0,-0.5)$) {\parbox{2.5cm}{\centering MultiHeadAttention}};
+        \node[RIR, anchor=north, fill=sstart] (L6) at  ($(L5.south)+(0,-0.7)$) {\parbox{2cm}{\centering LayerNorm}};
+        \node[RIR, anchor=north, fill=pink!50,draw=pink,dashed] (L10) at  ($(L6.south)+(0.3,-0.15)$) {\parbox[t][3.2cm][t]{3.2cm}{\raggedleft\virgil MLP}};
+        \node[RIR, anchor=north, fill=syellow] (L7) at  ($(L6.south)+(0,-0.3)$) {\parbox{2cm}{\centering \virgil xW\textsuperscript{T}+b\\\normalfont to hidden dims}};
+        \node[RIR, anchor=north, fill=sstart] (L8) at  ($(L7.south)+(0,-0.3)$) {\parbox{2cm}{\centering GELU activation}};
+        \node[RIR, anchor=north, fill=syellow] (L9) at  ($(L8.south)+(0,-0.3)$) {\parbox{2cm}{\centering  \virgil xW\textsuperscript{T}+b\\\normalfont to D dimensions}};
+        % ARROWS
+        \draw[AR] (L1.south) -- 
+        node[pos=0.4,name=cls,inner sep=0]{} 
+        node[pos=0.6,name=emb,inner sep=0]{} 
+        node[pos=0.8,name=c1,inner sep=0]{}
+        (L4.north);
+        \draw[AR] (L2.south) --++ (0,-0.2) |- (cls.north);
+        \draw[AR] (L3.south) --++ (0,-0.2) |- (emb.north);
+        \draw[AR] (L4.south) -- (L5.north);
+        \draw[AR] (L5.south) -- 
+        node[pos=0.35,inner sep=0,name=c1end]{$\oplus$} 
+        node[pos=0.8,name=c2,inner sep=0]{} (L6.north);
+        \draw[AR] (c1.north) -- ++ (2,0) |- (c1end.east);
+        \draw[AR] (L6.south) -- (L7.north);
+        \draw[AR] (L7.south) -- (L8.north);
+        \draw[AR] (L8.south) -- (L9.north);
+        \draw[AR] (L9.south) -- node[pos=0.35,inner sep=0,name=c2end]{$\oplus$} ++ (0,-.8);
+        \draw[AR] (c2.north) -- ++ (2.5,0) |- (c2end.east);
+        % MORE NODES
+        \node[RIR, anchor=north, fill=sstart] (L11) at  
+        ($(L9.south)+(0,-0.8)$) {
+            \parbox{2cm}{\centering LayerNorm}
+        };
+        \node[RIR, anchor=north, fill=sstart] (L12) at  
+        ($(L11.south)+(0,-0.5)$) {\parbox{3cm}{
+            \centering \virgil xW\textsuperscript{T}+b\\
+            \normalfont to CLASS dimensions
+            }};
+        % MORE ARROWS
+        \draw[AR] (L11.south) -- (L12.north);
+        \draw[AR] (L12.south) -- ++ (0,-0.4);
+    \end{tikzpicture}
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+class VisionTransformer(nn.Module):
+    def __init__(self):
+        super(VisionTransformer,self).__init__()
+        self.image_embeddings = ImageEmbeddings(
+            CONFIG.H, CONFIG.W,
+            CONFIG.P,CONFIG.D_IN
+        )
+        self.vit_blocks = nn.Sequential(
+            *[ViTBlock(CONFIG) 
+              for _ in range(CONFIG.LAYERS)])
+        self.norm = nn.LayerNorm(CONFIG.D_IN)
+        self.out_linear = nn.Linear(CONFIG.D_IN,CONFIG.CLASSES)
+    def forward(self,x):
+        x = self.image_embeddings(x)
+        x = self.vit_blocks(x)
+        x = self.norm(x[:, 0])
+        x = self.out_linear(x)
+        return x
+\end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -2573,19 +2643,121 @@ class ViTBlock(nn.Module):
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 29
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright 
+    \customtext{xtitle}{0em}{Inferencing using ViT-B/16}\\
+    The specific model {\it ViT-B/16} is named so because it uses a patch size of 16 and is 
+    the base variant of ViT from those implemented in the paper, all base variants having 
+    features
+    \begin{tabular}{SSSSSSSS} \toprule
+        {Layers} & {Hidden size $D$} & {MLP size} & {Heads} & {Params} \\\midrule
+        12  & 768 & 3072 & 12 & {86M}\\\bottomrule
+    \end{tabular}
+    \vspace{0.5em}\\
+    Taking a model roughly pretrained on the cifar10 dataset, let's copy the weights to our 
+    model and do some rough inferencing before we then explore the following variants that we'll now 
+    optimize, {\it ViT-L16,ViT-H14, ViT-g14, ViT-G14}, with the last two variants presented 
+    in the paper \maincitecount that looks into the scaling properties as a key to designing 
+    future generations effectively.\\
+    The inference pipeline is interestingly implemented and then can be invoked as \maincitecount
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+vit = VisionTransformer()
+weights = torch.load(
+    "../models/vit_b_16_pretrained_cifar10.pth",
+    weights_only=True, map_location='cpu')
+copy_model_weights(vit, weights)
+vit = vit.to(device); vit.eval()
+
+classes = ['airplane','automobile','bird','cat','deer',
+    'dog','frog','horse','ship','truck']
+inv_transforms = Compose([
+    Normalize(mean = [-i/j for i,j in zip(MEAN,STD)],
+              std = [1/i for i in STD]),
+    Lambda(lambda x: x * 255),
+    Lambda(lambda x: x.permute(1,2,0)),
+    Lambda(lambda x: x.to(torch.uint8))
+])
+
+images, labels = next(iter(test_loader))
+for i, (image, label) in enumerate(zip(images,labels)):
+    image = image.to(device)
+    image = image.unsqueeze(0)
+    plt.subplot(4,4,i+1)
+    with torch.no_grad():
+        pred = vit(image)
+    pred = pred.argmax(dim=-1).item()
+    cls = classes[pred]
+    image = image.cpu().squeeze()
+    inv_image = inv_transforms(image)
+    plt.imshow(inv_image,aspect='auto')
+    plt.axis('off')
+    plt.title(f'{cls}',color='g' if pred == label else 'r')
+
+plt.subplots_adjust(hspace=0.5,wspace=0.5)
+plt.show()
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize 
+  {\sidecitecount} 	
+  \href{https://arxiv.org/abs/2106.04560}{arXiv:2106.04560}\\
+  {\it Scaling Vision Transformers}\\
+  {\it Zhai et al. 2022 (The infamous Lucas Beyer is \\also a co-author on this)}\\
+  \vspace{2em}
+  \sidecitecount\ the core\_utils.py in the directory 
+  {\tiny \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/transformerViT}}
+implements the weight copying function and the rest of the inference code 
+can be found in the {\it core.py} file with the configs for {\it ViT-B/16} being
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
+class CONFIG:
+    P = 16 
+    H = 224
+    W = 224
+    D_IN = 768
+    D_OUT = D_IN
+    HEADS = 12
+    LAYERS = 12
+    HIDDEN_DIM = D_IN * 4
+    CLASSES = 10 
+\end{lstlisting}
+the result of the inference gives
+\includegraphics[width=\textwidth]{images/inferencevit.png}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 30
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
-        lorem ipsum
+    \customtext{xtitle}{0em}{The Four Variants of the "Optimization Apocalypse"}\\
+    Revisiting the original {\it Vision Transformers} paper,
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
-  \scriptsize 
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE ###
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
+        lorem ip
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
 \end{minipage}
 \end{figure}
 % ==================================================
