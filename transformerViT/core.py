@@ -53,24 +53,8 @@ class VisionTransformer(nn.Module):
         return x
 
 # in_ = torch.randn(1,3,224,224)
-vit = VisionTransformer()
 
-weights = torch.load("../models/vit_pretrained_cifar10.pth",weights_only=True, map_location='cpu')
-copy_model_weights(vit, weights)
-
-eq = torch.equal(vit.vit_blocks[0].attn.Wq.weight, weights['encoder.layers.encoder_layer_0.self_attention.in_proj_weight'][:768,:])
-print("are all equal? ", eq)
-
-print(vit.vit_blocks[0].attn.Wq.weight[:10,0]) 
-print(weights['encoder.layers.encoder_layer_0.self_attention.in_proj_weight'][:10,0])
-import sys 
-sys.exit()
-
-vit = vit.to(device)
-vit.eval()
-
-MEAN = [0.485, 0.456, 0.406]
-STD = [0.229, 0.224, 0.225]
+MEAN = [0.485, 0.456, 0.406]; STD = [0.229, 0.224, 0.225]
 
 transforms = Compose([
     Resize((224, 224)),
@@ -82,10 +66,15 @@ transforms = Compose([
 test_dataset = ds.CIFAR10("../datasets",download=True, train=False,transform=transforms)
 test_loader = DataLoader(test_dataset, batch_size=16,shuffle=True)
 
-classes = [
-    'airplane','automobile','bird','cat','deer',
-    'dog','frog','horse','ship','truck'
-]
+vit = VisionTransformer()
+
+weights = torch.load("../models/vit_b_16_pretrained_cifar10.pth",weights_only=True, map_location='cpu')
+copy_model_weights(vit, weights)
+
+vit = vit.to(device); vit.eval()
+
+classes = ['airplane','automobile','bird','cat','deer',
+    'dog','frog','horse','ship','truck']
 inv_transforms = Compose([
     Normalize(
       mean = [-i/j for i,j in zip(MEAN,STD)],
