@@ -1,5 +1,6 @@
 import torch, torch.nn as nn
 import torch.nn.functional as F
+import sys 
 
 import torchvision.datasets as ds 
 from torch.utils.data import DataLoader
@@ -34,7 +35,7 @@ device = (torch.accelerator.current_accelerator().type
           if torch.accelerator.is_available() else "cpu")
 
 class VisionTransformer(nn.Module):
-    def __init__(self):
+    def __init__(self,CONFIG):
         super(VisionTransformer,self).__init__()
         self.image_embeddings = ImageEmbeddings(
             CONFIG.H, CONFIG.W,
@@ -66,7 +67,7 @@ transforms = Compose([
 test_dataset = ds.CIFAR10("../datasets",download=True, train=False,transform=transforms)
 test_loader = DataLoader(test_dataset, batch_size=16,shuffle=True)
 
-vit = VisionTransformer()
+vit = VisionTransformer(CONFIG)
 
 weights = torch.load("../models/vit_b_16_pretrained_cifar10.pth",weights_only=True, map_location='cpu')
 copy_model_weights(vit, weights)
