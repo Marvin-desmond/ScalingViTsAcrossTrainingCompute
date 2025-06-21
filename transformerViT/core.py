@@ -139,14 +139,15 @@ inv_transforms = Compose([
     Lambda(lambda x: x.to(torch.uint8))
 ])
 
-images, labels = next(iter(test_loader))
+iter_loader = iter(test_loader)
+images, labels = next(iter_loader)
+
+images = images.to(device)
+preds = vit(images)
+
 for i, (image, label) in enumerate(zip(images,labels)):
-    image = image.to(device)
-    image = image.unsqueeze(0)
     plt.subplot(4,4,i+1)
-    with torch.no_grad():
-        pred = vit(image)
-    pred = pred.argmax(dim=-1).item()
+    pred = preds[i,:].argmax(dim=-1).item()
     cls = classes[pred]
     image = image.cpu().squeeze()
     inv_image = inv_transforms(image)
