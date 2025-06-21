@@ -7,15 +7,16 @@ class ImageEmbeddings(nn.Module):
         N = int((H*W)/(P**2)); self.N = N
         assert H%P==0 and W%P==0, \
           "image size must be integer multiple of patch"
-        self.conv_then_project = nn.Conv2d(3,out_channels=dim,kernel_size=P,stride=P)
-        self.class_tokens = nn.Parameter(torch.randn(1, 1, dim))
-        self.position_embeddings = nn.Parameter(torch.randn(1,N+1,dim))
+        self.conv_then_project = nn.Conv2d(
+            3,out_channels=dim,kernel_size=P,stride=P)
+        self.cls_toks = nn.Parameter(torch.randn(1, 1, dim))
+        self.pos_embeds = nn.Parameter(torch.randn(1,N+1,dim))
     def forward(self,image):
         x = self.conv_then_project(image)
-        x = x.flatten(2)
-        x = x.transpose(1,2)
-        x = torch.cat((self.class_tokens,x),dim=1)
-        x += self.position_embeddings[:,:(self.N+1)]
+        x = x.flatten(2); x = x.transpose(1,2)
+        cls_toks = self.cls_toks.expand(x.shape[0],-1,-1)
+        x = torch.cat((cls_toks,x),dim=1)
+        x += self.pos_embeds[:,:(self.N+1)]
         return x
     
 class MultiHeadAttention(nn.Module):
@@ -107,11 +108,11 @@ def copy_model_weights(model, params):
     model.image_embeddings.conv_then_project.bias = assign(
         model.image_embeddings.conv_then_project.bias,
         params['conv_proj.bias'])
-    model.image_embeddings.position_embeddings = assign(
-        model.image_embeddings.position_embeddings,
+    model.image_embeddings.pos_embeds = assign(
+        model.image_embeddings.pos_embeds,
         params['encoder.pos_embedding'])
-    model.image_embeddings.class_tokens = assign(
-        model.image_embeddings.class_tokens,
+    model.image_embeddings.cls_toks = assign(
+        model.image_embeddings.cls_toks,
         params['class_token'])
     for i in range(len(model.vit_blocks)):
         model.vit_blocks[i].ln1.weight = assign(
