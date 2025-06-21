@@ -143,7 +143,8 @@ iter_loader = iter(test_loader)
 images, labels = next(iter_loader)
 
 images = images.to(device)
-preds = vit(images)
+with torch.no_grad():
+    preds = vit(images)
 
 for i, (image, label) in enumerate(zip(images,labels)):
     plt.subplot(4,4,i+1)
