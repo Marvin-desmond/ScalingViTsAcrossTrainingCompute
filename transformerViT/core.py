@@ -69,6 +69,60 @@ test_loader = DataLoader(test_dataset, batch_size=16,shuffle=True)
 
 vit = VisionTransformer(CONFIG)
 
+"""
+class BaseConfig:
+    H = 224
+    W = 224
+    HEADS = 16
+    CLASSES = 10
+
+model_size = lambda x: sum(p.numel() for p in x.parameters())
+model_size_MB = lambda x: model_size(x) / 10**6
+model_size_GB = lambda x: model_size(x) / 10**9
+class L16Config(BaseConfig):
+    P = 16
+    D_IN = 1024
+    D_OUT = D_IN
+    LAYERS = 24
+    HIDDEN_DIM = D_IN * 4
+l_16_vit = VisionTransformer(L16Config)
+print(f"ViT L/16 {model_size_MB(l_16_vit):.2f} MB")
+del l_16_vit
+
+class H14Config(BaseConfig):
+    P = 14
+    D_IN = 1280
+    D_OUT = D_IN
+    LAYERS = 32
+    HIDDEN_DIM = D_IN * 4
+h_14_vit = VisionTransformer(H14Config)
+print(f"ViT H/14 {model_size_MB(h_14_vit):.2f} MB")
+del h_14_vit
+
+class g14Config(BaseConfig):
+    P = 14
+    D_IN = 1408
+    D_OUT = D_IN
+    LAYERS = 40
+    HIDDEN_DIM = 6144
+
+
+g_14_vit = VisionTransformer(g14Config)
+print(f"ViT g/14 {model_size_GB(g_14_vit):.2f} GB")
+del g_14_vit
+
+class G14Config(BaseConfig):
+    P = 14
+    D_IN = 1664
+    D_OUT = D_IN
+    LAYERS = 48
+    HIDDEN_DIM = 8192
+
+G_14_vit = VisionTransformer(G14Config)
+print(f"ViT G/14 {model_size_GB(G_14_vit):.2f} GB")
+del G_14_vit
+"""
+
 weights = torch.load("../models/vit_b_16_pretrained_cifar10.pth",weights_only=True, map_location='cpu')
 copy_model_weights(vit, weights)
 
