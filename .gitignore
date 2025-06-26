@@ -6,3 +6,4 @@ tests
 models
 datasets
 .env
+*.md
