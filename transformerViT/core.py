@@ -13,8 +13,7 @@ from torchvision.transforms.v2 import (
 from torchvision.transforms.v2 import Lambda
 
 from core_utils import (
-    ImageEmbeddings,
-    ViTBlock, copy_model_weights
+    VisionTransformer, copy_model_weights
 )
 
 SEED = 42
@@ -33,25 +32,6 @@ class CONFIG:
 
 device = (torch.accelerator.current_accelerator().type 
           if torch.accelerator.is_available() else "cpu")
-
-class VisionTransformer(nn.Module):
-    def __init__(self,CONFIG):
-        super(VisionTransformer,self).__init__()
-        self.image_embeddings = ImageEmbeddings(
-            CONFIG.H, CONFIG.W,
-            CONFIG.P,CONFIG.D_IN
-        )
-        self.vit_blocks = nn.Sequential(
-            *[ViTBlock(CONFIG) 
-              for _ in range(CONFIG.LAYERS)])
-        self.norm = nn.LayerNorm(CONFIG.D_IN)
-        self.out_linear = nn.Linear(CONFIG.D_IN,CONFIG.CLASSES)
-    def forward(self,x):
-        x = self.image_embeddings(x)
-        x = self.vit_blocks(x)
-        x = self.norm(x[:, 0])
-        x = self.out_linear(x)
-        return x
 
 # in_ = torch.randn(1,3,224,224)
 
