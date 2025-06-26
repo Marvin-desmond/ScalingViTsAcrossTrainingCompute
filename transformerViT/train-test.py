@@ -58,20 +58,17 @@ for _ in range(EPOCHS):
     LOSS = 0
     for images, labels in test_loader:
         optimizer.zero_grad()
-        label_ints = labels
-        labels = F.one_hot(labels,num_classes=10).to(torch.float32)
         images, labels = images.to(device), labels.to(device)
         out = model(images)
         loss = criterion(out, labels)
         loss.backward()
         out_ints = torch.argmax(out.detach().cpu(),dim=-1)
-        EPOCH_ACC += sum(label_ints == out_ints) 
+        EPOCH_ACC += sum(labels.cpu() == out_ints) 
         LOSS += loss.item()
         loss = criterion(out, labels)
         optimizer.step() 
         break
     scheduler.step()
-
     EPOCH_ACC = EPOCH_ACC / LEN_DATA
     LOSS = LOSS / LEN_LOADER
     print(f" Acc: {EPOCH_ACC = }")
