@@ -19,7 +19,7 @@
 \usepackage{geometry} % Formats the paper size, orientation, and margins
 
 \usepackage{booktabs}
-\usepackage{siunitx}
+\usepackage{siunitx,pagecolor}
 
 \geometry{
  a4paper,
@@ -110,6 +110,19 @@
     frame=tb, framerule=0pt,
     showstringspaces=false
 }
+
+\lstdefinestyle{bash}{
+  backgroundcolor=\color[rgb]{0.91,0.925,0.929},
+  language={bash},
+  breaklines=true,
+  showstringspaces=false,
+  breakatwhitespace=true,
+  framexleftmargin=3pt,
+  framextopmargin=1pt,
+  framexbottommargin=1pt, 
+  frame=tb, framerule=0pt,
+}
+
 \definecolor{xsocial}{HTML}{1C9BEF}
 \definecolor{xtitle}{HTML}{1E6A41}
 \definecolor{xlink}{HTML}{036EE8}
@@ -2454,16 +2467,14 @@ class ImageEmbeddings(nn.Module):
           "image size must be integer multiple of patch"
         self.conv_then_project = nn.Conv2d(
             3,out_channels=dim,kernel_size=P,stride=P)
-        self.class_tokens = nn.Parameter(
-            torch.randn(1, 1, dim))
-        self.position_embeddings = nn.Parameter(
-            torch.randn(1,N+1,dim))
+        self.cls_toks = nn.Parameter(torch.randn(1, 1, dim))
+        self.pos_embeds = nn.Parameter(torch.randn(1,N+1,dim))
     def forward(self,image):
         x = self.conv_then_project(image)
-        x = x.flatten(2)
-        x = x.transpose(1,2)
-        x = torch.cat((self.class_tokens,x),dim=1)
-        x += self.position_embeddings[:,:(self.N+1)]
+        x = x.flatten(2); x = x.transpose(1,2)
+        cls_toks = self.cls_toks.expand(x.shape[0],-1,-1)
+        x = torch.cat((cls_toks,x),dim=1)
+        x += self.pos_embeds[:,:(self.N+1)]
         return x
 \end{lstlisting}
 \customtext{xtitle}{0em}{The Looping transformer Block}\\
@@ -2616,7 +2627,7 @@ class ViTBlock(nn.Module):
     \end{tikzpicture}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 class VisionTransformer(nn.Module):
-    def __init__(self):
+    def __init__(self,CONFIG):
         super(VisionTransformer,self).__init__()
         self.image_embeddings = ImageEmbeddings(
             CONFIG.H, CONFIG.W,
@@ -2663,7 +2674,7 @@ class VisionTransformer(nn.Module):
     future generations effectively.\\
     The inference pipeline is interestingly implemented and then can be invoked as \maincitecount
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
-vit = VisionTransformer()
+vit = VisionTransformer(CONFIG)
 weights = torch.load(
     "../models/vit_b_16_pretrained_cifar10.pth",
     weights_only=True, map_location='cpu')
@@ -2680,21 +2691,21 @@ inv_transforms = Compose([
     Lambda(lambda x: x.to(torch.uint8))
 ])
 
-images, labels = next(iter(test_loader))
+iter_loader = iter(test_loader)
+images, labels = next(iter_loader)
+images = images.to(device)
+with torch.no_grad():
+    preds = vit(images)
+
 for i, (image, label) in enumerate(zip(images,labels)):
-    image = image.to(device)
-    image = image.unsqueeze(0)
     plt.subplot(4,4,i+1)
-    with torch.no_grad():
-        pred = vit(image)
-    pred = pred.argmax(dim=-1).item()
+    pred = preds[i,:].argmax(dim=-1).item()
     cls = classes[pred]
     image = image.cpu().squeeze()
     inv_image = inv_transforms(image)
     plt.imshow(inv_image,aspect='auto')
     plt.axis('off')
     plt.title(f'{cls}',color='g' if pred == label else 'r')
-
 plt.subplots_adjust(hspace=0.5,wspace=0.5)
 plt.show()
 \end{lstlisting}
@@ -2735,9 +2746,57 @@ the result of the inference gives
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{The Four Variants of the "Optimization Apocalypse"}\\
-    Revisiting the original {\it Vision Transformers} paper,
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+    Revisiting the original {\it Vision Transformers} paper, we see that {\it\small ViT-L16} 
+    can be grouped as a large variant with patch size $16$, and {\it\small ViT-H14} 
+    can be put in the huge variant with patch size $14$. Image size is $224$ pixels for the 
+    experiments done in the paper hence we'll hold on that for the rest of the article 
+    section.\\The variants {\it \small ViT-g14} and {\it \small ViT-G14} are from the next 
+    paper \sidecite{48} and are scaled versions of the earlier models trained to benchmark 
+    performance during scaling under different conditions. The summary for the models are then 
+    thus ({\it as extracted from Table 1 and 2 of the respective papers})
+    {\footnotesize\begin{tabular}{cccccc} 
+        \toprule
+        \textbf{Type/Patch} & \textbf{Depth (Layers)} & \textbf{Dimensions $D$} & \textbf{Intermediate MLP Size} & \textbf{Heads} & \textbf{Params} \\
+        \midrule
+        L/16  & 24 & 1024 & 4096 & 16 & 307M \\
+        H/14  & 32 & 1280 & 5120 & 16 & 632M \\
+        g/14  & 40 & 1408 & 6144 & 16 & 1.011B \\
+        G/14  & 48 & 1664 & 8192 & 16 & 1.843B \\
+        \bottomrule
+    \end{tabular}}
+    \vspace{0.5em}\\
+    which then translates programmatically to
+    \vspace{0.5em}\\
+    \begin{tikzpicture}[
+    RIR/.style={draw=black, very thick, rectangle, rounded corners, inner sep=5pt, inner ysep=5pt},
+    AR/.style={>=stealth,thick,->}
+    ]   \footnotesize\virgil
+    \node[RIR,fill=sstart] (base) {\parbox{8.6cm}{
+    \centering Vision Transformers Architecture implemented\\\raggedright
+    {\usebox{\baseconfig}}
+    }};
+    \node[RIR,anchor=west,fill=sgreen] (lvit) at ($(base.east)+(2,1)$) {\parbox{7.3cm}{
+        \centering ViT-L/16\\\raggedright
+        {\usebox{\lconfig}}
+    }};
+    \node[RIR,anchor=north,fill=sorange] (hvit) at ($(lvit.south)+(-0.2,-0.15)$) {\parbox{7.3cm}{
+        \centering ViT-H/14\\\raggedright
+        {\usebox{\hconfig}}
+    }};
+    \node[RIR,anchor=north,fill=sblue] (gvit) at ($(base.south)+(0,-1.5)$) {\parbox{7.3cm}{
+        \centering ViT-g/14\\\raggedright
+        {\usebox{\gconfig}}
+    }};
+    \node[RIR,anchor=west,fill=syellow] (Gvit) at ($(base.south east)+(-0.5,-5.7)$) {\parbox{7.3cm}{
+        \centering ViT-G/14\\\raggedright
+        {\usebox{\Gconfig}}
+    }};
+    % ARROWS 
+    \draw [AR] (base.east) to [out=20,in=180] (lvit.west);
+    \draw [AR] ($(base.east)+(0,-1)$) to [out=0,in=160] ($(hvit.north west)+(0,-0.5)$);
+    \draw [AR] ($(base.south east)+(-0.3,0)$) to [out=-40,in=90] ($(Gvit.north west)+(0.6,0)$) ;
+    \draw [AR] (base.south) to [out=-90,in=100] (gvit.north);
+\end{tikzpicture}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -2746,11 +2805,477 @@ the result of the inference gives
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE ###
+% PAGE 31
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Lorem the capital ipsum}\\
+    \customtext{xtitle}{0em}{The naive data pipeline}\\
+    The benchmarking of the {\it ViT} variants by Google DeepMind from the naive pipeline then 
+    scales it to data parallel pipeline using PyTorch's {\it Distributed Data Parallel} for models 
+    that fit into a single gpu,( {\it \small refer to the github doc\sidecite{34}}). We may not 
+    explore huge models that need be fit in many gpus given the article is already too long 
+    enough, but this will be interestingly explored sooner in a later article that will also go 
+    into the interesting {\it \small DiLoCo\maincitecount} which is used to revolutionalize 
+    multi-node training in a high fault networked training\maincitecount. For the {\it ViT-G14}, 
+    the Fully Sharded Data Parallel (FSDP) is used instead.\\
+    Let's now start on building the naive pipeline and use the time in hours per epoch for how much 
+    speed improvement we get during optimization even in the model graph using {\it torch.compile} and 
+    float precision reduction in the computations.\\
+    \vspace{1em}
+    \customtext{xtitle}{0em}{Everything starts with cifar10\maincitecount dataset}\\
+    This dataset is infamous for scaling of models, and awesome papers such as one 
+    by Keller Jordan\maincitecount, shows how much still can be explored based on it.
+    It can be loaded from the torchvision datasets
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+import torch, torchvision 
+from torchvision.transforms.v2 import (
+    Compose, ToImage, Resize, ToDtype, Normalize)
+SEED = 42; torch.manual_seed(SEED)
+MEAN = [0.485,0.456,0.406]; STD = [0.229,0.224,0.225]
+transforms = Compose([
+  Resize((224, 224)),ToImage(),
+  ToDtype(torch.float32,scale=True),Normalize(MEAN,STD),
+])
+
+train_data = torchvision.datasets.CIFAR10(
+    root="../datasets", train=True, transform=transforms, download=True)
+test_data = torchvision.datasets.CIFAR10(
+    root="../datasets", train=False, transform=transforms, download=True)
+
+print(f"Train images: ", len(train_data)) # Train images:  50000
+print(f"Test images: ", len(test_data)) # Test images:  10000
+\end{lstlisting}
+The batch will be scaled as per the training limits as from the table in the github 
+optimization docs, but for now, let's consider {\it \color{xlink} Yann Lecun}'s\\
+\centering
+{\it \small Friends don't let friends use mini-batches larger than 32}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  {\sidecitecount} 	\href{https://arxiv.org/abs/2311.08105}{arXiv:2311.08105}\\
+      {\it DiLoCo: Distributed Low-Communication Training of Language Models}\\
+      {\it Douillard et al. 2023}\\
+      \vspace{2em}
+      \sidecitecount \href{https://pytorch.org/blog/fault-tolerant-llama-training-with-2000-synthetic-failures-every-15-seconds-and-no-checkpoints-on-crusoe-l40s/}{
+        Fault Tolerant Llama: training with 2000 synthetic failures every ~15 seconds and no checkpoints on Crusoe L40S
+      }\\
+      {\it Tristan Rice, Howard Huang}\\
+      {\it June 20, 2025}
+      \vspace{2em}\\
+      \sidecitecount \url{https://www.cs.toronto.edu/~kriz/cifar.html}\\
+      {\it The CIFAR-10 dataset}\\
+      {\it Thanks Hinton and the team}\\
+      \vspace{2em}
+      \sidecitecount \href{https://arxiv.org/pdf/2404.00498}{	arXiv:2404.00498}\\
+      {\it 94\% on CIFAR-10 in 3.29 Seconds on a Single GPU}\\
+      {\it Keller Jordan}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 32
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    Now that we know the batch size to use, let's implement the iterable for batched data 
+    processing 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+from torch.utils.data import DataLoader
+BATCH=32
+train_loader = DataLoader(train_data,batch_size=BATCH,shuffle=True)
+test_loader = DataLoader(test_data,batch_size=BATCH,shuffle=True)
+\end{lstlisting}
+And then now, let's start with the model benchmark for {ViT-L/16}. Instantiating it becomes 
+easy, considering we've gone through it clearly.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+vit_l_16 = VisionTransformer(L16Config)
+device = (torch.accelerator.current_accelerator().type 
+          if torch.accelerator.is_available() else "cpu")
+vit_l_16 = vit_l_16.to(device)
+vit_l_16.train()
+\end{lstlisting}
+Next, let's define the optimizer that updates the weights with respect to the gradients computed and 
+the cross entropy\maincitecount\ loss function, the one for which invoking backward propagation 
+computes the needed gradients. I explain a lot more about gradient computation and backpropagation in 
+this course \maincitecount and specifically the section for which the link directs. 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+optimizer = torch.optim.SGD(
+    vit_l_16.parameters(),lr=1e-3,momentum=.9)
+criterion = torch.nn.CrossEntropyLoss()    
+\end{lstlisting}
+onto training for a single epoch and computing the time per epoch hours, then
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+    import time
+    from tqdm import tqdm 
+    start = time.time()
+    running_loss = 0.0
+    for i, (images, labels) in enumerate(tqdm(train_loader)):
+        images = images.to(device)
+        actual = labels.to(device)
+        optimizer.zero_grad()
+        predicted = vit_l_16(images)
+        loss = criterion(predicted,actual)
+        running_loss += loss.item()
+        if i % 200 == 0:
+          last_loss = running_loss / 200
+          print(' BATCH {} LOSS: {:.2f}'.format(i + 1, last_loss))
+          running_loss = 0.
+        loss.backward()
+        optimizer.step()
+    stop = time.time()
+    print(f"time : {(stop - start) / 3600:.5f} hours per epoch")
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \scriptsize
+  \sidecitecount
+  This video awesomely delves into probability and cross-entropy. Its 
+  baseline concept is entropy, which is a measure of uncertainity.\\
+    \includegraphics[width=0.5\textwidth]{images/crossentropy.jpg}\\
+    \tiny \href{https://www.youtube.com/watch?v=KHVR587oW8I}{The Key Equation Behind Probability}\\ 
+    {\it by Artem Kirsanov}\\ 
+    \vspace{2em}
+    \sidecitecount {\it From Tensors to Residual Learning}\\
+    \href{https://youcanjustbuild.com/courses/from-tensors-to-residual-learning/playing_with_grads}{
+        Playing with Grads}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 33
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Time in Hours per Epoch: Part One}\\
+    The metric of priority is time in hours per epoch. Considering batch 
+    size of 32 for a start, trying to run this on the {\it T4} free GPU tier 
+    of 16GB VRAM in Google Colab crashes since training requires more memory 
+    than the available VRAM, so, the options to not run out of memory involve: 
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+        \item reduce the batch size, training will run but will be approximately 
+        twice the time, and we are not trying to increase the time, we need to 
+        reduce it.
+        \item mixed-precision training, trains some layers, i.e. convolution layers 
+        on float16 which makes them much faster with the rest like reduction ops on float32
+        \maincitecount.
+        \item quantization-aware training, involves clamping and rounding floating-point 
+        values during training to simulate int8 precision\maincitecount.
+        \item using LoRA (Low-Rank Adaptation) and its variants which uses lower rank 
+        matrices of the matrix multiplication layers i.e. linear layers \maincitecount. 
+    \end{itemize}
+Of the common training techniques mentioned, we'll instead focus on 
+Data Distributed Parallel, Fully Sharded Data Parallel, reduced precision 
+training, and optimizing the model graph using Jax. Summarily, we'll focus on 
+scalable multi-GPU and TPU training. The compute for these techniques will 
+be remotely spawned with the much needed GPU RAM and tunneled via ssh.
+\vspace{1em}\\
+\customtext{xtitle}{0em}{Remote Compute}\\
+For this section, the platforms {\it \href{https://www.runpod.io}{RunPod}} and 
+{\it\href{https://vast.ai}{Vast}} are to be used for spawning the compute needed, 
+you can choose either of these for your workloads, but now for the connection, 
+ssh is the just needed tool for connecting and running commands and programs in 
+the compute.
+\vspace{1em}\\
+\customtext{xtitle}{0em}{What is Secure Shell (SSH)?}\\
+This is a secure protocol that enables logging into remote compute, running commands, 
+copying files to and from the compute, and installing tools. Think of it as a way to 
+always use your normal computer via the terminal and not by using Graphical Interfaces\maincitecount. 
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize 
+  \sidecitecount \href{https://docs.pytorch.org/tutorials/recipes/recipes/amp_recipe.html}{
+    Automatic Mixed Precision}\\
+    {\it PyTorch blog by Michael Carilli, Created 2020, Updated 2025}\\ 
+    \vspace{2em}
+    \sidecitecount \href{https://docs.pytorch.org/docs/stable/quantization.html}{Quantization}\\
+    {\it Quantization Aware Training for Static Quantization}\\
+    \vspace{2em}
+    \sidecitecount \href{https://docs.pytorch.org/torchtune/0.4/tutorials/lora_finetune.html}{
+        Fine-Tuning Llama2 with LoRA}\\
+    \vspace{2em}
+    \sidecitecount Well, you could use graphical interfaces, but by port forwarding, and that 
+    is beyond the scope of this article.
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 34
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Spawn a GPU Compute in RunPod}\\
+    The cited article\maincitecount goes into generating an ssh key, setting up the public key 
+    in the platform, then ssh-ing into the spawned remote compute. I'd recommend two great tools 
+    that will help navigate between your local and remote compute with great flexibility
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+        \item helix editor\maincitecount, an terminal-based text editor that does not need 
+        customizations by having to write configs in a complex functional language. Neat for 
+        and editing programs and writing automation tools within the remote compute.
+        \item tmux\maincitecount, a tool that helps in managing multiple sessions, local and remote, without 
+        having to switch terminals or apps. Great for terminal-based multi-tasking and persistent 
+        ssh tunneling.
+    \end{itemize}
+    \vspace{0.5em}
+    Going into runpod, we need the {\it A40, 48GB VRAM} pod. This allows for inference given no
+    parallelism. Next, as per specified in the benchmark of reference\maincitecount, 
+    we'll upgrade to a compute of approximately {\it 40GB} per gpu, 8 counts of such.\\
+    Runpod gives us this compute for \$0.4/hour, a nice option considering other options like 
+    \url{Vast.ai} gives us the same for \$0.471/hour, not much difference for small training, but 
+    considering days of training, becomes a significant diference.
+    After moving all necessary files\maincitecount to the spawned remote compute using the command 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+scp -P $PORT {core_utils,train_official}.py root@$IP:/root/ 
+\end{lstlisting}
+The time per epoch hours attained is 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+time : 0.33440 hours per epoch
+\end{lstlisting}
+or to say it another way, 33 minutes. However, one thing is to be noted from ViT benchmarks for the 
+{\it ViT-L/16}, the global batch size is 512, meaning for the 8 optimal gpus used, the batch size 
+per gpu then becomes 64, so, runnning another epoch for the now modified batch size of 64 gives 
+the time per epoch of 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+time : 0.32292 hours per epoch
+\end{lstlisting}
+The next section then goes into the start of parallelism and how to beat the time achieved by Google
+(or approximate it) of 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+time : 0.00722251 hours per epoch
+\end{lstlisting}
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  \sidecitecount \href{https://docs.runpod.io/pods/configuration/use-ssh}{Use SSH}
+  \vspace{2em}\\
+  \sidecitecount \href{https://helix-editor.com/}{Helix Editor Official Site}
+  \vspace{2em}\\
+  \sidecitecount\\ 
+  \href{https://github.com/tmux/tmux/wiki/Getting-Started}{Tmux Getting Started}
+  \vspace{2em}\\
+  \sidecitecount Benchmark Table
+  \includegraphics[width=\textwidth]{images/vitbenchscaling.png}
+  \vspace{2em}\\
+  \sidecitecount the files can be found in the repository and the folder\\
+  \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/transformerViT/}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 35
+\pagecolor{black!40}
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Message Passing Interface (MPI)}\\
+    As adapted from the book, Programming Massively Parallel Processors\maincitecount, a MPI is\\
+    \vspace{1em}
+    {\it \small a programming interface in which computing nodes in a cluster do not share memory.
+    This memory isolation strategy hence dictates that all data sharing and interaction within must 
+    be done through explicit message passing, as common in High Performance Computing(HPC).
+    In HPC, apps written in MPI have run successfully on cluster computing systems with 
+    more than 100,000 nodes. Due to this high number of nodes and lack of shared memory, the 
+    amount of effort then that is needed to port an application into MPI can be quite high 
+    across computing nodes.}\\
+    \vspace{1em}
+    This tool is commonly implemented in C, with its Python ported version\maincitecount\ to be 
+    used by high-level compute developers. PyTorch implements all this in Data Distributed Parallel 
+    which has been tuned for multi-GPU hence is much much faster, one that is part of this article 
+    that is coming after this. However, using MPI natively gives more control.\\
+    After installing your version of MPI\maincitecount, then compiling it will be by using 
+    {\it \color{xtitle}mpicc} instead of {\it \color{xtitle}gcc}. This {\it hello world} code of MPI
+    in C
+\begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+  MPI_Init(&argc, &argv);
+  int name_len, world_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+  char processor_name[MPI_MAX_PROCESSOR_NAME];
+  MPI_Get_processor_name(processor_name, &name_len);
+  char *s_or_p_processor = world_size < 2 ? "processor" : "processors";
+  printf("Hello world from processor %s out of %d %s\n",
+   processor_name, world_size, s_or_p_processor);
+  MPI_Finalize();
+}
+\end{lstlisting}
+thus when compiled gives
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+> mpicc -o hello_mpi hello_mpi.c && ./hello_mpi
+Hello world from processor Marvins-MacBook-Pro-4.local out of 1 processor
+\end{lstlisting}    
+\end{minipage}
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  \sidecitecount 
+  {Programming Massively Parallel Processors}\\
+  {\it A Hands-on Approach}\\
+  {\it 4th Edition - May 28, 2022}\\
+  \href{https://shop.elsevier.com/books/programming-massively-parallel-processors/hwu/978-0-323-91231-0}{Buy Link}\\
+  \vspace{2em}
+  \sidecitecount \href{https://mpi4py.readthedocs.io/en/stable/}{mpi4py}\\
+  \vspace{2em}
+  \sidecitecount \url{https://www.open-mpi.org/software/ompi/v5.0/}
+
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 36
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    So knowing that MPI uses multiprocessing, multiple processes are spawned, each of these processes 
+    having their own memory. This then provides parallelism as these processes are independent of each 
+    other and do not have to wait for one another, executing across multiple input values as the input 
+    data is distributed across processes.\\
+    \vspace{1em}
+    \customtext{xtitle}{0em}{Data Parallelism}\\
+    From the context of model training, considering you have a very large dataset, then 
+    data parallelism means that you take your model and copy it across multiple machines (GPUs),
+    then different non-overlapping batches of data are uniquely sent across the different 
+    machines, forward pass done in each machine, gradients locally computed, then the 
+    computed gradients are then aggregated across all processes, then averaged on a master node 
+    by the number of gpus to to give global gradients, before the processes are sent the new 
+    global gradients that then are used to update the models on each of those machines terms 
+    of their parameters. This ensures that all models are thus a copy of each other.\\
+    From this, then two collective  communication strategies are key 
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+        \item reduce (or all-reduce) \maincitecount
+        \item broadcast \maincitecount
+    \end{itemize}
+    Let's consider an array with 4 values representative of four batches, and so 
+    we send the values to the four processes\maincitecount.
+\begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    MPI_Init(&argc, &argv);
+    int rank, world_size, scattered_val;
+    int values[4] = {39, 72, 129, 42};
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Scatter(&values, 1, MPI_INT, &scattered_val, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    printf("Processor %d received %d\n",rank, scattered_val);
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Finalize();
+}
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \sidecitecount reduce {\small $\sim$} computes a reduction operation then stores the result
+  in a master node, all-reduce instead stores the result in all the processes
+  \includegraphics[width=0.8\textwidth]{images/reduce.png}\\
+  \sidecitecount broadcast {\small $\sim$} copies the computed global gradient from the master
+  process to the other processes. 
+  \includegraphics[width=0.8\textwidth]{images/broadcast.png}
+  \vspace{1em}
+  \sidecitecount 
+  and run the program as
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+> mpicc -o hello_mpi hello_mpi.c 
+> mpirun -np 4 ./hello_mpi
+Processor 0 received 39
+Processor 1 received 72
+Processor 2 received 129
+Processor 3 received 42
+\end{lstlisting}
+the MPI barrier is since the forward and backward pass for each process needs to finish and all 
+local gradients sent to the master process, so it synchronizes all processes upto when the last 
+process sends the local gradient to the master node.
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 37
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
+    Right before the line {\it \color{xlink} MPI\_Finalize()}, consider that as our starting
+    point. Assuming each process involves computation that simulates the gpu computation of 
+    the forward and backward pass, which we then gather the results to a master process, 
+    then the additional code is \maincitecount
+\begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
+    // ...
+    //a computation to simulate a forward and back pass 
+    scattered_val = scattered_val * 0.5; 
+    printf("Processor %d updated value %d\n",rank, scattered_val);
+    MPI_Barrier(MPI_COMM_WORLD);
+    // gather to rank zero
+    int *rbuf;
+    if (rank == 0) {
+        rbuf = (int *)malloc(world_size*sizeof(int)); 
+    }
+    MPI_Gather(&scattered_val, 1, MPI_INT, rbuf, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    if (rank == 0){
+        for (int i=0; i < world_size; i++) {
+            printf("Rank %d: rbuf[%d] = %d\n", rank, i, rbuf[i]);
+        }
+        free(rbuf);
+    }
+    //...
+\end{lstlisting}
+However, we are not doing a gather, but a reduce, so then doing a reduce with MPI
+leads to the above code being modified, from the line {\it\small int *rbuf}, as 
+\begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
+  // ...
+  // gather to rank zero
+  int global_avg;
+  MPI_Reduce(&scattered_val, &global_avg, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+  if (rank == 0){
+       printf("Rank %d: sum %d average %.1f\n", 
+        rank, global_avg, (float)global_avg/world_size);
+  }
+  // ...
+\end{lstlisting}
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+Rank 0: sum 140 average 35.0
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize 
+  \sidecitecount the result of the program is thus 
+  \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+    > mpicc -o hello_mpi hello_mpi.c 
+    > mpirun -np 4 ./hello_mpi
+    Processor 0 received 39
+    Processor 0 updated value 19
+    Processor 1 received 72
+    Processor 1 updated value 36
+    Processor 2 received 129
+    Processor 2 updated value 64
+    Processor 3 received 42
+    Processor 3 updated value 21
+    Rank 0: rbuf[0] = 19
+    Rank 0: rbuf[1] = 36
+    Rank 0: rbuf[2] = 64
+    Rank 0: rbuf[3] = 21
+    \end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 37
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
         lorem ip
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
