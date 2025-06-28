@@ -3071,7 +3071,6 @@ time : 0.00722251 hours per epoch
 % ==================================================
 \pagebreak
 % PAGE 35
-\pagecolor{black!40}
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
@@ -3182,7 +3181,10 @@ int main(int argc, char** argv) {
   \includegraphics[width=0.8\textwidth]{images/reduce.png}\\
   \sidecitecount broadcast {\small $\sim$} copies the computed global gradient from the master
   process to the other processes. 
-  \includegraphics[width=0.8\textwidth]{images/broadcast.png}
+  \includegraphics[width=0.8\textwidth]{images/broadcast.png}\\
+  {\it diagrams courtesy of\\
+  \href{https://docs.pytorch.org/tutorials/intermediate/dist_tuto.html}{
+    Writing Distributed Applications with PyTorch}}\\
   \vspace{1em}
   \sidecitecount 
   and run the program as
@@ -3230,8 +3232,8 @@ process sends the local gradient to the master node.
     }
     //...
 \end{lstlisting}
-However, we are not doing a gather, but a reduce, so then doing a reduce with MPI
-leads to the above code being modified, from the line {\it\small int *rbuf}, as 
+However, we need not to do a gather, but a reduce, so then doing a reduce with 
+MPI leads to the above code being modified, from the line {\it\small int *rbuf}, as 
 \begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
   // ...
   // gather to rank zero
@@ -3251,27 +3253,142 @@ Rank 0: sum 140 average 35.0
 \begin{minipage}[t]{.4\textwidth}
   \raggedright \scriptsize 
   \sidecitecount the result of the program is thus 
-  \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
-    > mpicc -o hello_mpi hello_mpi.c 
-    > mpirun -np 4 ./hello_mpi
-    Processor 0 received 39
-    Processor 0 updated value 19
-    Processor 1 received 72
-    Processor 1 updated value 36
-    Processor 2 received 129
-    Processor 2 updated value 64
-    Processor 3 received 42
-    Processor 3 updated value 21
-    Rank 0: rbuf[0] = 19
-    Rank 0: rbuf[1] = 36
-    Rank 0: rbuf[2] = 64
-    Rank 0: rbuf[3] = 21
-    \end{lstlisting}
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+> mpicc -o hello_mpi hello_mpi.c 
+> mpirun -np 4 ./hello_mpi
+Processor 0 received 39
+Processor 0 updated value 19
+Processor 1 received 72
+Processor 1 updated value 36
+Processor 2 received 129
+Processor 2 updated value 64
+Processor 3 received 42
+Processor 3 updated value 21
+Rank 0: rbuf[0] = 19
+Rank 0: rbuf[1] = 36
+Rank 0: rbuf[2] = 64
+Rank 0: rbuf[3] = 21
+\end{lstlisting}
 \end{minipage}
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE 37
+% \pagecolor{black!40}
+% PAGE 38
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    Now let's broadcast the resulting average value, signifying the computed global 
+     gradients, to all the processes (nodes)\maincitecount.
+\begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
+  // ...
+  // Broadcast the result to all the processes
+  float broadcast_val = 0.0f;
+  if (rank == 0){
+    broadcast_val = (float)global_avg/world_size;
+  }
+  MPI_Bcast(&broadcast_val, 1, MPI_FLOAT, 0, MPI_COMM_WORLD);
+  printf("Processor %d final value %f\n",rank, broadcast_val);
+  // ...
+\end{lstlisting}
+We actually don't need {\it \color{xsocial}MPI\_Barrier} before the collective 
+operations since they implicitly require synchronization before starting to execute.\\
+\vspace{1em}
+\customtext{xtitle}{0em}{MPI in Python}\\
+Considering the first speedup of ViT training will use this library, {\it mpi4py}, let
+us rewrite the previous implementation of the reduce and broadcast in Python, with 
+no need for explanations as it does the same operations.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+from mpi4py import MPI
+import numpy as np 
+comm = MPI.COMM_WORLD
+size = comm.Get_size()
+rank = comm.Get_rank()
+if rank == 0:
+    data = [39, 72, 129, 42]
+else:
+    data = None 
+# simulate sending batches to nodes
+data = comm.scatter(data, root=0)
+print(f"Processor {rank} received {data}")
+comm.Barrier()
+# simulate forward and back pass 
+data = data * 0.5
+print(f"Processor {rank} updated {data:.2f}")
+# reduce 
+resulting_sum = np.array(0.0,dtype=np.float64)
+comm.Reduce(
+        np.array(data, dtype=np.float64),
+        resulting_sum, op=MPI.SUM, root=0)
+if rank == 0:
+    print(f"Processor {rank} sum {resulting_sum:.2f}")
+# broadcast the average
+data = comm.bcast(resulting_sum/size, root=0)
+print(f"Processor {rank} final {data:.2f}")
+\end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  \sidecitecount the result of the program is 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+Processor 0 received 39
+Processor 1 received 72
+Processor 2 received 129
+Processor 3 received 42
+Processor 3 updated value 21
+Processor 3 final value 35.000000
+Processor 2 updated value 64
+Processor 2 final value 35.000000
+Processor 0 updated value 19
+Rank 0: sum 140 average 35.0
+Processor 0 final value 35.000000
+Processor 1 updated value 36
+Processor 1 final value 35.000000
+\end{lstlisting}
+\vspace{2em}
+\sidecitecount and the Python equivalent program using MPI is run as\\
+{\it ensure mpi4py is installed using \color{Maroon} pip install mpi4py}
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+mpiexec -n 4 python hello_parallel.py
+\end{lstlisting}
+which gives the expected result as
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+Processor 0 received 39
+Processor 2 received 129
+Processor 3 received 42
+Processor 1 received 72
+Processor 1 updated 36.00
+Processor 3 updated 21.00
+Processor 0 updated 19.50
+Processor 2 updated 64.50
+Processor 0 sum 141.00
+Processor 0 final 35.25
+Processor 2 final 35.25
+Processor 1 final 35.25
+Processor 3 final 35.25
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 39
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
+        lorem ip
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 40
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
