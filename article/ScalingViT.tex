@@ -177,8 +177,7 @@
     \textcolor{xtitle}{{\it A journey across optimization levels}}\\
     [0.2cm]
     \normalsize
-    \raggedright
-    Looking back at when we could only reliably produce Shakespearean poetry with {\it RNNs}, a thin line between hallucinations 
+    Looking back at when I could only reliably produce Shakespearean poetry with {\it RNNs}, a thin line between hallucinations 
     and poetry, one can see why Google open sourcing Transformers was the just needed {\it krabby patty secret formula} to SOTA 
     models toppling leaderboards every coming week, and copyright lawsuits enriching the lawyers in the same way that AI ideas 
     could be well thought out as a well pipelined autocomplete service driving some startups.\\ 
@@ -204,25 +203,24 @@
     \end{minipage}
     \hspace{25pt}
     \begin{minipage}[t]{.4\textwidth}
-      \raggedright
       \scriptsize 
       {\sidecitecount} \href{https://arxiv.org/abs/1706.03762}{arXiv:1706.03762}\\
       {\it Attention is all you need}\\
       {\it Vaswani et al. 2017}\\
-      \vspace{2em}
+      \vspace{2em}\\
       {\sidecitecount} RNNs can be understood using a special key word, {\it \bf recurrent}, meaning to recur, where each hidden 
       state would have a loop within itself and also includes the compounded outputs of all the previous hidden states,
       hugely based on the concept of a Markov model\\
-      \vspace{2em}
+      \vspace{2em}\\
       {\bf Markov process} is a stochastic process with the properties:
-      \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+      \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
         \item number of posssible states is finite
         \item outcome at any state depends only on outcomes pf previous states
-        \item probabilities are constant over time 
+        \item probabilities are constant over time,
       \end{itemize}
       where a \textit{\textbf{stochastic process}} can be said as a probability distribution over a space of paths;
       this path often describing the evolution of some {\bf random variable} over time.\\
-      \vspace{1em}
+      \vspace{1em}\\
       A random variable, despite its name, is never random, and not a variable, it is a deterministic function.\\
       \vspace{1em}
       \includegraphics[width=0.5\textwidth]{images/rvnotrandom.jpg}\\
@@ -234,7 +232,6 @@
 % PAGE 2
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{From a black box approach}\\
     Given a text {\small \textit{\textbf{The ruler of a kingdom is a}}} with the next likely word 
     being \textit{\textbf{\small king}}, humanly thinking, how is the input sentence then passed to a 
@@ -244,7 +241,7 @@
     would be a hashmap of words to integers and vice versa for getting a word from index of maximum 
     probability in softmaxed one-dimensional distribution of output float values {\maincitecount}.\\
     \vspace{0.5em}
-    Implementing a simple tokenizer based on the vocabulary{\maincitecount} we have, 
+    Implementing a simple tokenizer based on the vocabulary{\maincitecount} I have, 
 \begin{lstlisting}[language=python,style=python,,basicstyle=\ttfamily\footnotesize]
 text = "The ruler of a kingdom is a"
 text = text.lower() # making tokenizer case insensitive 
@@ -254,7 +251,7 @@ vocab = list(sorted(set(text)))
 words_to_ids = {word:i for i, word in enumerate(vocab)}
 ids_to_words = {v:k for k,v in words_to_ids.items()}
 \end{lstlisting}
-Great, now we have lookup tables (the last two lines), and a naive preprocessing of text needed 
+Great, now I have lookup tables (the last two lines), and a naive preprocessing of text needed 
 before tokenization.  So then, let's tokenize \textcolor{xtitle}{the kingdom had another ruler}.
 Wait?! The lookup table does not have the words \textcolor{xtitle}{"another", "had", "another"}! 
 Let's improve it so any word not part of the original vocabulary be assigned a new unique id{\maincitecount}.
@@ -274,15 +271,14 @@ def lookup(word):
     \end{minipage}%
     \hspace{25pt}
     \begin{minipage}[t]{.4\textwidth}
-      \raggedright
       \scriptsize 
       {\sidecitecount} the commonly used tokenizer is tiktoken, using a concept called Byte-Pair Encoding to 
       map subwords to ids using a look-up table that takes into account frequencies of subwords.\\
-      \vspace{2em}
+      \vspace{2em}\\
       {\sidecitecount} vocabulary {\tiny $\sim$} set of unique words (or subwords based on the tokenization strategy) 
       in all words of the entire training dataset used to train a particular large language model.\\
-      \vspace{2em}
-      {\sidecitecount} our look-up tables are very much capable of any encoding and decoding (for the tiny tiny vocabulary).
+      \vspace{2em}\\
+      {\sidecitecount} the look-up table is very much capable of any encoding and decoding (for the tiny tiny vocabulary).
     \end{minipage}
 \end{figure}
 % PAGE 3
@@ -338,7 +334,6 @@ and the embedding dimensions, \bandi{D}, being 3072.
 % PAGE 4
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Positional Encoding}\\
     Before the Multi-Head Attention (MHA) block, the positional encoding is attached to the graph to constitute the position information and 
     this allows the model to easily attend to relative positions.
@@ -354,7 +349,7 @@ and the embedding dimensions, \bandi{D}, being 3072.
     % Why is this not good? Well, for linear self-attention architecture, this bias disrupts low-rank factorization hence forcing 
     % explicit computation of the position bias matrix.
     Let's making a few things clear, 
-    \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
         \item previous position encodings were done before the MHA block, this is done within it.
         \item RoPE is only applied to the queries and the keys, not the values. 
         \item RoPE is only applied after the vectors $\vec{q}$ and $\vec{k}$ have been multiplied by the 
@@ -380,14 +375,13 @@ device = torch.device(
    \end{minipage}%
     \hspace{25pt}
     \begin{minipage}[t]{.4\textwidth}
-      \raggedright
-      \scriptsize 
-      {\sidecitecount} \scriptsize{\url{https://huggingface.co/blog/designing-positional-encoding}}\\
+      \scriptsize
+      \sidecitecount{\url{https://huggingface.co/blog/designing-positional-encoding}}\\
       \scriptsize 
       { \it You could have designed state of the art positional encoding}\\
       {\it Christopher Fleetwood}\\
-      \vspace{2em}
-      {\sidecitecount} 	\href{https://arxiv.org/pdf/2104.09864}{arXiv:2104.09864}\\
+      \vspace{2em}\\
+      \sidecitecount \href{https://arxiv.org/pdf/2104.09864}{arXiv:2104.09864}\\
       {\it RoFormer: Enhanced Transformer with Rotary Position Embedding}\\
       {\it Su et al. 2022}\\
       \vspace{2em}
@@ -661,12 +655,11 @@ a picture is worth a thousand words! Let it do the talking!
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
   {\sidecitecount} {\it nn.Linear} is an instance initialization of a stack of perceptrons in a single layer in PyTorch, 
   with {\it d\_in} previously known as the abstract dim of the word embedding, and  {\it d\_out} is initialized 
   as {\it d\_in}\\
-  \vspace{2em}
+  \vspace{2em}\\
   {\sidecitecount} proving the invocation that initializes Q, K and V matrices
   \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 import torch
@@ -678,8 +671,8 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
   \end{lstlisting}
   \vspace{2em}
   {\sidecitecount} the MHA has its core in attention mechanism whose goal is to dynamically decide on 
-  which inputs we want to “attend” more than others based on 
-  \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+  which inputs I want to “attend” more than others based on 
+  \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
     \item \textbf{\textit{query}} {\tiny $\sim$} a feature vector that describes what we are looking for in the sequence, i.e. what would we maybe want to pay attention to.
     \item \textbf{\textit{keys}} {\tiny $\sim$} for each input element, we have a key which is again a feature vector. This feature vector roughly describes what 
     the element is “offering”, or when it might be important. The keys should be designed such that we can identify the elements we want to pay attention to based on the query.
@@ -691,10 +684,9 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
 % PAGE 7
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{-1em}{Scaled dot product attention}\\
     The term, first introduced in the {\it Vaswani et al.} paper, involves the following key operations:
-    \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
         \item compute the dot product of queries and keys of dimension $d_k$, $QK^T$
         \item scaling by a factor $1/\sqrt{d_k}$ to counteract the effect of extremely small gradients in the 
         softmax computation as will be seen in the next step when $d_k$ becomes very large{\stepcounter{maincite}}{\maincitecount}.
@@ -702,12 +694,12 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
         \item softmax computation of the normalized result attention scores. The result is the attention weights.
         \item dot product of the attention weights and the values.
       \end{itemize}
-      \vspace{1em}
       the infamous equation is therefore\\
-      \vspace{-2em}
+      \vspace*{-2em}
       \begin{gather*}
           \text{attention}(Q,K,V)=\text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V
       \end{gather*}
+      \vspace*{-2em}
       \begin{figure}[H]
         \centering
         \begin{tikzpicture}[
@@ -746,7 +738,6 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
     \fontsize{9}{8}\textcolor{xtitle}{\it from previous $^{13}$...}\\
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
@@ -759,7 +750,7 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
     \textbf{
                 \textit{courtesy of \href{https://uvadlc-notebooks.readthedocs.io/en/latest/tutorial_notebooks/tutorial6/Transformers_and_MHAttention.html}{UvA course notes}}
                 }\\
-    \vspace{2em}
+    \vspace{2em}\\
     {\sidecitecount} $d_k$ is the size of the last dimension of the keys after linear projection and transpose, to be implemented later.
     It is the head dimension for each attention head.\\ 
     Sanity check states that your key dimension be {\it B x Seq\_len x h x head\_dim}
@@ -770,13 +761,12 @@ torch.equal(Wq(x), x@Wq.weight.T) # True
 % PAGE 8
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     During the decoding phase, at each step of predicting a word{\maincitecount}, the network needs take a look 
     at the words previous to that step, and output a softmax prediction for what it thinks the next word 
     is. Since transformers attend to the entire sequence, before and after, it becomes a trivial task to predict 
     the next word, simply by putting 100\% attention to the word after it.\\
     This of course is cheating, it won't learn anything really. During the inference pipeline, the entire sequence 
-    won't be present, hence why we need the masking block, we don't want each word in the decoder to see the words 
+    won't be present, hence why I need the masking block, I don't want each word in the decoder to see the words 
     that come after it.\\
     \customtext{xtitle}{1em}{Implementing masking in code}\\
     Let's use the sequence below\\
@@ -811,11 +801,10 @@ print(scaled_scores.shape) # torch.Size([7, 7])
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
   {\sidecitecount} the model actually predicts a token which, by using a lookup table, is decoded to a word which 
   is what humans understand.\\
-  \vspace{2em}
+  \vspace{2em}\\
   {\sidecitecount} the lookup-table {\it tokenizer.model} can be found from the huggingface model card for {\it Llama-2-7b}
   {\scriptsize \url{https://huggingface.co/meta-llama/Llama-2-7b/tree/main}}
 \end{minipage}
@@ -823,9 +812,7 @@ print(scaled_scores.shape) # torch.Size([7, 7])
 \pagebreak
 % PAGE 9
 \begin{figure}[!htb]
-    \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    
+    \begin{minipage}[t]{0.65\textwidth}    
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 torch.set_printoptions(precision=5,sci_mode=False,linewidth=500)
 print(scaled_scores)
@@ -921,7 +908,6 @@ adds an activation function to introduce non-linear, even better relations.
 % PAGE 10
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Building Llama-2 from the SDPA outwards...}\\
 Gladly having gone through the layers in the Transformer model, it is of essence 
 to build the Llama-2 model graph and load the weights for the 7B variant. 
@@ -930,7 +916,7 @@ Why is that?\\
 Well, decoder-only architectures worked very well for next token prediction and translation tasks, 
 and were easier to train. And so, they picked up as the {\it de facto} baselines for most current
 outstanding models.\\
-Earlier, we had the graph for the Multi-head Attention, let's add codes to it to map it 
+Earlier, I had the graph for the Multi-head Attention, let's add codes to it to map it 
 to implementation.\\
 \begin{tikzpicture}[
     BIR/.style={rectangle, draw=black!60, fill=black!5, very thick, minimum size=5mm, minimum height=4em, minimum width=6em},
@@ -1033,9 +1019,8 @@ Let's figure out where?
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
-  {\sidecitecount} disjointed for it does not exist in a {nn.Module} class with the updatable weights in the init
+  \sidecitecount disjointed for it does not exist in a {nn.Module} class with the updatable weights in the init
   part of the class  
 \end{minipage}
 \end{figure}
@@ -1044,7 +1029,6 @@ Let's figure out where?
 % PAGE 11
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Recap on Rotational Positional Encoding}\\
     \begin{tikzpicture}
         \node (intro) {
@@ -1201,7 +1185,6 @@ but before the high-dimensional transpose to get the batch of heads each with di
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
   {\sidecitecount} reminder that the rotational transformation is to be applied to the queries and keys only and not the values
   ({\it refer to page 4}).
@@ -1212,7 +1195,6 @@ but before the high-dimensional transpose to get the batch of heads each with di
 % PAGE 12
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
 $\star$ which is then done below{\maincitecount}\\
 \begin{tikzpicture}
 \node (intro) {
@@ -1268,7 +1250,6 @@ to the input to the  feed-forward networks.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
   \scriptsize 
   {\sidecitecount} full neat implementation\\
   \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/mha/mha_with_rope.py}\\
@@ -1280,7 +1261,6 @@ to the input to the  feed-forward networks.
 % PAGE 13
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     However, the original FFN, as can be seen from the side notes 
     on {\it pg.9}, does two linear transformations with a 
     ReLU{\maincitecount} activation function applied between the two 
@@ -1334,15 +1314,15 @@ to the input to the  feed-forward networks.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright \scriptsize
+  \scriptsize
   {\sidecitecount} \href{https://proceedings.mlr.press/v15/glorot11a.html}{https://proceedings.mlr.press/v15/glorot11a.html}\\
   {\it Deep Sparse Rectifier Neural Networks}\\
   {\it Glorot et al. 2011}\\
-  \vspace{2em}
+  \vspace{2em}\\
   {\sidecitecount} \href{https://arxiv.org/abs/2002.05202v1}{https://arxiv.org/abs/2002.05202v1}\\
   {\it GLU Variants Improve Transformer}\\
   {\it Noam Shazeer 2020}\\
-  \vspace{2em}
+  \vspace{2em}\\
   {\sidecitecount} \href{https://arxiv.org/abs/1606.08415}{https://arxiv.org/abs/1606.08415}\\
   {\it Gaussian Error Linear Units (GELUs)}\\
   {\it Dan Hendrycks, Kevin Gimpel 2016}
@@ -1542,10 +1522,10 @@ light cloud computes that effectively run inference pipelines.\\
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{First shot at inference}\\
-As much as we would want to look for the cloud instance on AWS with the highest
+As much as I would want to look for the cloud instance on AWS with the highest
 GPU VRAM and spawn it, ssh to it then copy the inference files and folders to the remote instance 
 before running the pipeline, and then worrying about destroying the instance before our expenses
-gets too high, let's simplify things a bit shall we! As on-demand as we can get and with just focusing on
+gets too high, let's simplify things a bit shall we! As on-demand as I can get and with just focusing on
 the Python code with a bit of sprinkling of decorators, 
 I'd like to go into this platform called Modal{\maincitecount}\\
 \customtext{xtitle}{0em}{Configuring Modal}\\
@@ -1686,7 +1666,7 @@ Wed May 28 20:41:22 2025
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{Configuring the pipeline for GPU inference}\\
-Now that we have a good enough understanding of Modal, let's configure the file
+Now that I have a good enough understanding of Modal, let's configure the file
 {\it \small local\_inference.py} for remote compute.\\
 We'll need torch for GPU accelerated numerical computing, huggingface hub for downloading 
 llama weights, sentencepiece as the tokenizer package for Llama2. So let's create 
@@ -1714,7 +1694,7 @@ from pathlib import Path
 volume = modal.Volume.from_name("model-weights-vol", create_if_missing=True)
 MODEL_DIR = Path("/models") # note the dot is removed
 \end{lstlisting}
-Next, we make our function to download model weights run on remote compute by decorating it as follows
+Next, I make the function to download model weights run on remote compute by decorating it as follows
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 @app.function(
   volumes={MODEL_DIR: volume},
@@ -1777,7 +1757,7 @@ hence yielding $Q$ as 32, the lower bound for GPU is then
     &M = 3.36\times10^{10}\ \text{bytes}\\
     &M = 33.6\ GB
 \end{align*}
-Hence for the GPU options by Modal, we can then go for the nearest upper GPU which is A100-40GB. This leads to 
+Hence for the GPU options by Modal, I can then go for the nearest upper GPU which is A100-40GB. This leads to 
 decorating our class as 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 @app.cls(
@@ -1798,9 +1778,9 @@ methods{\maincitecount}.
   \scriptsize 
   {\sidecitecount} \href{https://training.continuumlabs.ai/infrastructure/data-and-memory/calculating-gpu-memory-for-serving-llms}{Calculating GPU memory for serving LLMs}
   \vspace{2em}\\
-  {\sidecitecount} what if we didn't know the number of parameters? Well for starters, we can get the parameters of filters in convolution layers by knowing the number of filters
+  {\sidecitecount} what if I didn't know the number of parameters? Well for starters, I can get the parameters of filters in convolution layers by knowing the number of filters
   and the number of channels per each input to that layer and the kernel size (depthwise stack of kernels form a filter). For a Linear layer,
-  we get the size of the weight matrix and the bias to compute the parameters in that layer.
+  I get the size of the weight matrix and the bias to compute the parameters in that layer.
   \vspace{2em}\\
   {\sidecitecount}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
@@ -1864,8 +1844,8 @@ This is a very interesting and inspiring story. It is the story of a young girl 
     \customtitle{The focus of the article}
     With this in mind, the article will now convert the previous Llama 2 architecture to the base Transformer model 
     for which the Google {\it ViT} is based upon, before now looking into the ViT paper on changes to achieve the final Vision Transformers state.
-    However, we are still in the single-GPU pipeline, hence changes need be made to the architecture to shard it across many 
-    GPUs, optimizing it even by float point precision levels as we tune it to its optimal state ever.
+    However, I am still in the single-GPU pipeline, hence changes need be made to the architecture to shard it across many 
+    GPUs, optimizing it even by float point precision levels as I tune it to its optimal state ever.
     \vspace{1em}\\
     \customtitle{So why Vision Transformers?}
     Given the interesting nature of Transformers of being computationally efficient and scalable, allowing training models of
@@ -2075,7 +2055,7 @@ embeddings used, however in this case the image patches are considered instead o
       PyTorch is an awesome framework, and with it comes one nice functionality, 
       {\it torch unfold}{\maincitecount}, the functionality behind the very core 
       convolution operations in convolutional neural networks. So how does it work?\\
-      Imagine we have a 3-channel tensor, then {\it unfold} extracts the patch of a given 
+      Imagine I have a 3-channel tensor, then {\it unfold} extracts the patch of a given 
       kernel size across all channels in the tensor and unrolls it to a single column, 
       before proceeding to the next patch as noted by the stride\maincitecount.
 \begin{figure}[H]
@@ -2151,7 +2131,7 @@ embeddings used, however in this case the image patches are considered instead o
     \sidecitecount the tensor needs extrusion to the batch dimension since unfold only supports 4-D tensors
     \vspace{2em}\\
     \sidecitecount Note that {\it unfold} gives us the flattened 2D patches as a transpose of the expected 2D patches 
-    in the paper, since we have in the resulting visual  $(P^2\cdot C)\times N$ when we need its transpose, denoted 
+    in the paper, since I have in the resulting visual  $(P^2\cdot C)\times N$ when I need its transpose, denoted 
     as $\text{x}_p$ in the paper of dims $N\times(P^2\cdot C)$. This will be handy later on!
     \vspace{2em}\\
     \sidecitecount \href{https://youcanjustbuild.com/courses/fromtensorstoresidual}{\it From Tensors To Residual Learning}\\
@@ -2165,7 +2145,7 @@ embeddings used, however in this case the image patches are considered instead o
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     Huggingface datasets\includegraphics[width=0.05\textwidth]{images/hf-logo.png} come in handy for this, getting the image 
-    which is a \textit{Pillow} instance which we then transform to a {\it torch Tensor}
+    which is a \textit{Pillow} instance which I then transform to a {\it torch Tensor}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 from datasets import load_dataset
 from  torchvision.transforms.v2.functional import (
@@ -2244,9 +2224,9 @@ This library greatly simplifies a lot of incredible operations, and is
 greatly used even in simplifying high dimensional matrix-multiplication 
 heavy layers in many model graphs.\\
 The docs is wonderful and on the side notes for in-depth review. 
-In this case, we want to get the image dimensions, and then get the 
-height and width as integer multiples of the patch size, but we need to 
-be cautious on how we handle the channel dimensions, that is, how we translate 
+In this case, I want to get the image dimensions, and then get the 
+height and width as integer multiples of the patch size, but I need to 
+be cautious on how I handle the channel dimensions, that is, how I translate 
 the unfold operation as either channel dimensions first or spatial dimensions
 first.
     This change in dimensions is implemented using einops as     
@@ -2376,8 +2356,8 @@ in my course\maincitecount.
 \sidecitecount \url{https://einops.rocks/pytorch-examples.html}\\
 {\it Writing a better code with pytorch and einops}
 \vspace{2em}\\
-\sidecitecount Note that as we understood from \sidecite{38}, we have to transpose 
-how we actually got the patches to 
+\sidecitecount Note that as I understood from \sidecite{38}, I have to transpose 
+how I actually got the patches to 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\tiny]
 Rearrange('b c (h p1) (w p2) -> b (h w) (p1 p2 c)',
         p1=P,p2=P)
@@ -2396,7 +2376,7 @@ which then gives us the {2D} flattened patches
 \begin{minipage}[t]{0.65\textwidth}
 \raggedright
 \customtitle{Now onto implementing the image embeddings}
-Using convolution, we implicitly get the image patches and linearly project to D dimensions
+Using convolution, I implicitly get the image patches and linearly project to D dimensions
 directly.
 The kernel size becomes the size of the needed patch with the stride being the same, 
 the output channels size become D\maincitecount. This layer is also essential given it is 
@@ -2404,12 +2384,12 @@ a trainable layer, as opposed to the two previously looked-into ops that weren't
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 patch_layer=nn.Conv2d(3, 768, kernel_size=16, stride=16)
 \end{lstlisting}
-Based on the output size from the convolution formula, we get  
+Based on the output size from the convolution formula, I get  
 $$\Big\lfloor \frac{256 - 16}{16} + 1 \Big\rfloor=16$$
 which begets the output size of 16 \times 16 with 768 channels in the order 
 {\small $(1,768,16,16)$}. Looking into this output, it aligns more with 
-{\small $(1,D,\sqrt{N},\sqrt{N})$} when what we need is {\small $(1,N,D)$}.
-Hence, we consider two operations, combining the last two dimensions then transposing 
+{\small $(1,D,\sqrt{N},\sqrt{N})$} when what I need is {\small $(1,N,D)$}.
+Hence, I consider two operations, combining the last two dimensions then transposing 
 the now new last two dimensions, programmatically implemented as\\ 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 in_ = torch.randn(1,3,256,256)
@@ -2667,8 +2647,8 @@ class VisionTransformer(nn.Module):
         12  & 768 & 3072 & 12 & {86M}\\\bottomrule
     \end{tabular}
     \vspace{0.5em}\\
-    Taking a model roughly pretrained on the cifar10 dataset, let's copy the weights to our 
-    model and do some rough inferencing before we then explore the following variants that we'll now 
+    Taking a model roughly pretrained on the cifar10 dataset, let's copy the weights to the 
+    model and do some rough inferencing before I then explore the following variants that we'll now 
     optimize, {\it ViT-L16,ViT-H14, ViT-g14, ViT-G14}, with the last two variants presented 
     in the paper \maincitecount that looks into the scaling properties as a key to designing 
     future generations effectively.\\
@@ -2746,7 +2726,7 @@ the result of the inference gives
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{The Four Variants of the "Optimization Apocalypse"}\\
-    Revisiting the original {\it Vision Transformers} paper, we see that {\it\small ViT-L16} 
+    Revisiting the original {\it Vision Transformers} paper, I see that {\it\small ViT-L16} 
     can be grouped as a large variant with patch size $16$, and {\it\small ViT-H14} 
     can be put in the huge variant with patch size $14$. Image size is $224$ pixels for the 
     experiments done in the paper hence we'll hold on that for the rest of the article 
@@ -2819,7 +2799,7 @@ the result of the inference gives
     multi-node training in a high fault networked training\maincitecount. For the {\it ViT-G14}, 
     the Fully Sharded Data Parallel (FSDP) is used instead.\\
     Let's now start on building the naive pipeline and use the time in hours per epoch for how much 
-    speed improvement we get during optimization even in the model graph using {\it torch.compile} and 
+    speed improvement I get during optimization even in the model graph using {\it torch.compile} and 
     float precision reduction in the computations.\\
     \vspace{1em}
     \customtext{xtitle}{0em}{Everything starts with cifar10\maincitecount dataset}\\
@@ -2878,7 +2858,7 @@ optimization docs, but for now, let's consider {\it \color{xlink} Yann Lecun}'s\
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    Now that we know the batch size to use, let's implement the iterable for batched data 
+    Now that I know the batch size to use, let's implement the iterable for batched data 
     processing 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
 from torch.utils.data import DataLoader
@@ -2955,9 +2935,8 @@ onto training for a single epoch and computing the time per epoch hours, then
     of 16GB VRAM in Google Colab crashes since training requires more memory 
     than the available VRAM, so, the options to not run out of memory involve: 
     \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
-        \item reduce the batch size, training will run but will be approximately 
-        twice the time, and we are not trying to increase the time, we need to 
-        reduce it.
+        \item reduce the batch size, training will run but with no speed improvement, 
+        and I need to reduce it.
         \item mixed-precision training, trains some layers, i.e. convolution layers 
         on float16 which makes them much faster with the rest like reduction ops on float32
         \maincitecount.
@@ -3022,7 +3001,7 @@ always use your normal computer via the terminal and not by using Graphical Inte
         ssh tunneling.
     \end{itemize}
     \vspace{0.5em}
-    Going into runpod, we need the {\it A40, 48GB VRAM} pod. This allows for inference given no
+    Going into runpod, I need the {\it A40, 48GB VRAM} pod. This allows for inference given no
     parallelism. Next, as per specified in the benchmark of reference\maincitecount, 
     we'll upgrade to a compute of approximately {\it 40GB} per gpu, 8 counts of such.\\
     Runpod gives us this compute for \$0.4/hour, a nice option considering other options like 
@@ -3155,7 +3134,7 @@ Hello world from processor Marvins-MacBook-Pro-4.local out of 1 processor
         \item broadcast \maincitecount
     \end{itemize}
     Let's consider an array with 4 values representative of four batches, and so 
-    we send the values to the four processes\maincitecount.
+    I send the values to the four processes\maincitecount.
 \begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
 #include <mpi.h>
 #include <stdio.h>
@@ -3208,9 +3187,9 @@ process sends the local gradient to the master node.
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
     \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
-    Right before the line {\it \color{xlink} MPI\_Finalize()}, consider that as our starting
+    Right before the line {\it \color{xlink} MPI\_Finalize()}, consider that as the starting
     point. Assuming each process involves computation that simulates the gpu computation of 
-    the forward and backward pass, which we then gather the results to a master process, 
+    the forward and backward pass, which I then gather the results to a master process, 
     then the additional code is \maincitecount
 \begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
     // ...
@@ -3232,7 +3211,7 @@ process sends the local gradient to the master node.
     }
     //...
 \end{lstlisting}
-However, we need not to do a gather, but a reduce, so then doing a reduce with 
+However, I need not to do a gather, but a reduce, so then doing a reduce with 
 MPI leads to the above code being modified, from the line {\it\small int *rbuf}, as 
 \begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
   // ...
@@ -3376,8 +3355,8 @@ Processor 3 final 35.25
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \customtext{xtitle}{0em}{DDP, a message passsing tool for multi-node GPUs}\\
-    So, we are going to skip delving into mpi4py with torch and training (for now),
-    because we need to build torch from scratch for MPI to work for GPUs, and the 
+    So, I am going to skip delving into mpi4py with torch and training (for now),
+    because I need to build torch from scratch for MPI to work for GPUs, and the 
     last time I tried to build a tool\maincitecount, I did not like the patience I 
     had to endure for it to complete.\\
     Distributed Data Parallel is a tool that does distributed computations for 
@@ -3482,8 +3461,8 @@ ops works for the different tools that are common.
   \raggedright\scriptsize 
   \sidecitecount how spawn works is very interesting, it calls the function 
   {\it init\_process} as {\it init\_process(i, *args)} where i is the process 
-  index/rank. This then means we don't need to pass the rank argument as needed 
-  by the {\it init\_process}. Also, we can either pass rank and world\_size 
+  index/rank. This then means I don't need to pass the rank argument as needed 
+  by the {\it init\_process}. Also, I can either pass rank and world\_size 
   to the run function or use the {\it dist.get\_rank()} and 
   {\it dist.get\_world\_size()} for the variables, whichever works for you.\\
   \vspace{2em}
@@ -3511,8 +3490,71 @@ rank 0 final value tensor([35.2500])
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Spawning processes using torch.multiprocessing}\\
+    \customtext{xtitle}{0em}{Distributing batches to different GPUs}\\
+    This is the time to go back to your cloud GPU platform i.e. RunPod, and spin up 
+    an instance of 2 gpus. Based on the number of gpus, I compute the datasets per rank.
+    In doing this, first of all, I rewrite the dataset initializer into a function 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+def create_data():
+    train_data = torchvision.datasets.CIFAR10(
+      root="./datasets", train=True, transform=transforms, download=True)
+    test_data = torchvision.datasets.CIFAR10(
+      root="./datasets", train=False, transform=transforms, download=True) 
+    return (train_data,test_data)
+\end{lstlisting}
+And so, the next thing is to partition the dataset for each gpu (rank). Given I provisioned
+
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 41
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{lorem ipsum}\\
         lorem ip
+\begin{lstlisting}[language=bash, style=bash,basicstyle=\ttfamily\footnotesize]
+local batch  32
+local batch  32
+local batch  32
+local batch  32
+# BEFORE TRAINING
+test loss: 2.41
+test acc: 7.82 %
+test loss: 2.40
+test acc: 8.30 %
+# AFTER FIRST EPOCH
+rank 1 epoch loss: 2.01
+rank 1 time : 0.18776 hours per epoch
+device: cuda:1
+rank 0 epoch loss: 2.02
+rank 0 time : 0.18762 hours per epoch
+device: cuda:0
+test loss: 1.94
+test acc: 28.16 %
+test loss: 1.93
+test acc: 29.56 %
+# AFTER SECOND EPOCH
+rank 1 epoch loss: 1.91
+rank 1 time : 0.18795 hours per epoch
+rank 0 epoch loss: 1.91
+rank 0 time : 0.18809 hours per epoch
+test loss: 1.86
+test acc: 31.60 %
+rank 1 gpu NVIDIA A40
+test loss: 1.89
+test acc: 30.34 %
+rank 0 gpu NVIDIA A40
+\end{lstlisting}
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
