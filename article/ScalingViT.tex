@@ -3297,7 +3297,7 @@ operations since they implicitly require synchronization before starting to exec
 \customtext{xtitle}{0em}{MPI in Python}\\
 Considering the first speedup of ViT training will use this library, {\it mpi4py}, let
 us rewrite the previous implementation of the reduce and broadcast in Python, with 
-no need for explanations as it does the same operations.
+no need for explanations as it does the same operations\maincitecount.
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
 from mpi4py import MPI
 import numpy as np 
@@ -3375,15 +3375,54 @@ Processor 3 final 35.25
 % PAGE 39
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
-        lorem ip
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+    \customtext{xtitle}{0em}{DDP, a message passsing tool for multi-node GPUs}\\
+    So, we are going to skip delving into mpi4py with torch and training (for now),
+    because we need to build torch from scratch for MPI to work for GPUs, and the 
+    last time I tried to build a tool\maincitecount, I did not like the patience I 
+    had to endure for it to complete.\\
+    Distributed Data Parallel is a tool that does distributed computations for 
+    pipelines by assigning accelerators for the said computations and also 
+    facilitates the communication between different processes which can either be 
+    peer-to-peer communication or collective communications.\\
+    PyTorch, using the distributed package, creates a group of processes that are 
+    "device-aware" using the {\it \color{xlink} torch.distributed.init\_process\_group},
+    hook them up with fast communication backends, {\it nccl, gloo} and {mpi}, 
+    then prepare your data pipeline and model implementation to work in this 
+    multi-process context. Based on this then,  a few environment variables are used to glue everything 
+    together,
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+    \item \textbf{world\_size} {\small $\sim$} total number of GPUs in your cluster 
+    \item \textbf{rank} {\small $\sim$} the unique id of a GPU.
+    \item \textbf{store} {\small $\sim$} a shared key-value store used for initializing 
+    the distributed process group by exchanging information like addresses 
+    and ports.
+    \item \textbf{process group} {\small $\sim$} a subset of processes(GPUs) that 
+    communicate with each other. Default group includes all GPUs.
+    \end{itemize}
+    For CPU, backend to be used is {\it gloo} with the maximum world size being the 
+    available physical CPU cores, though it is not recommended to use all the cores as 
+    this may degrade performance. Making sure each process has the capability to 
+    communicate to each other can be done with 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+import os, sys, torch.distributed as dist
+import torch.multiprocessing as mp
+def init_process(rank,size,fn,backend="gloo"):
+    os.environ['MASTER_ADDR'] = '127.0.0.1'
+    os.environ['MASTER_PORT'] = '29500'
+    dist.init_process_group(
+        backend,rank=rank,world_size=size)
+    fn()
+    dist.barrier()
+    dist.destroy_process_group()
+\end{lstlisting}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
+  \raggedright\scriptsize 
+  \sidecitecount \href{https://youcanjustbuild.com/labs/spark_neuron}{
+    Neuron $\sim$ an inference-efficient compute tool
+  }\\
+  {\it by Marvin, June 2023 Article}
 \end{minipage}
 \end{figure}
 % ==================================================
@@ -3392,10 +3431,92 @@ Processor 3 final 35.25
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
+    \customtext{xtitle}{0em}{Spawning processes using torch.multiprocessing}\\
+    With the communication between processes defined, spawning 4 processes is then 
+    done with \maincitecount
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def run():
+    rank = dist.get_rank()
+    size = dist.get_world_size()
+    print(f"rank {rank} size {size}")
+if __name__ == "__main__":
+    world_size = 4 # os.cpu_count()
+    mp.set_start_method("spawn")
+    mp.spawn(fn=init_process, args=(world_size,run), nprocs=world_size, join=True)
+\end{lstlisting}
+Rewriting the previous implementations of collective communications in C and Python
+now in {\it \color{xlink}torch.distributed}, the resulting code is\maincitecount
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+import torch
+def run(rank,size):
+    tensor = torch.zeros(1)
+    data = [39,72,129,42]
+    tensor = torch.tensor([data[rank]], dtype=torch.float32)
+    print(f"rank {rank} size {size} data {tensor}")
+    dist.barrier() # for print convenience
+    tensor = tensor * 0.5
+    print(f"rank {rank} updated data to {tensor}")
+    dist.barrier() # for print convenience
+    # reduce op
+    dist.reduce(tensor,0,dist.ReduceOp.SUM)
+    if rank == 0:
+        print(f"rank {rank} reduced value {tensor}")
+    # broadcast the average
+    if rank == 0:
+        tensor = tensor / size
+    dist.broadcast(tensor,src=0)
+\end{lstlisting}
+Note that {\it reduce} and {\it broadcast} can be reduced to {\it all\_reduce} as 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+    dist.all_reduce(tensor,dist.ReduceOp.SUM)
+    tensor = tensor / size
+    print(f"rank {rank} final value {tensor}")
+\end{lstlisting}
+The reason for being redundant was to show how collective communication 
+ops works for the different tools that are common.
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright\scriptsize 
+  \sidecitecount how spawn works is very interesting, it calls the function 
+  {\it init\_process} as {\it init\_process(i, *args)} where i is the process 
+  index/rank. This then means we don't need to pass the rank argument as needed 
+  by the {\it init\_process}. Also, we can either pass rank and world\_size 
+  to the run function or use the {\it dist.get\_rank()} and 
+  {\it dist.get\_world\_size()} for the variables, whichever works for you.\\
+  \vspace{2em}
+  \sidecitecount output of Python code
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+rank 3 size 4 data tensor([42.])
+rank 3 updated data to tensor([21.])
+rank 3 final value tensor([35.2500])
+rank 1 size 4 data tensor([72.])
+rank 1 updated data to tensor([36.])
+rank 1 final value tensor([35.2500])
+rank 2 size 4 data tensor([129.])
+rank 2 updated data to tensor([64.5000])
+rank 2 final value tensor([35.2500])
+rank 0 size 4 data tensor([39.])
+rank 0 updated data to tensor([19.5000])
+rank 0 reduced value tensor([141.])
+rank 0 final value tensor([35.2500])
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+% PAGE 41
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{Spawning processes using torch.multiprocessing}\\
         lorem ip
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
