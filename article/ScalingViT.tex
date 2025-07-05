@@ -286,7 +286,7 @@ def lookup(word):
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{Trying our shiny code}\\
+    \customtext{xtitle}{0em}{Trying the new shiny code}\\
 \begin{lstlisting}[language=python,style=python,,basicstyle=\ttfamily\footnotesize]
 sentence = "the kingdom had another ruler"
 tokens = [lookup(word) for word in sentence.lower().split()]
@@ -1524,7 +1524,7 @@ light cloud computes that effectively run inference pipelines.\\
     \customtext{xtitle}{0em}{First shot at inference}\\
 As much as I would want to look for the cloud instance on AWS with the highest
 GPU VRAM and spawn it, ssh to it then copy the inference files and folders to the remote instance 
-before running the pipeline, and then worrying about destroying the instance before our expenses
+before running the pipeline, and then worrying about destroying the instance before the expenses
 gets too high, let's simplify things a bit shall we! As on-demand as I can get and with just focusing on
 the Python code with a bit of sprinkling of decorators, 
 I'd like to go into this platform called Modal{\maincitecount}\\
@@ -1758,7 +1758,7 @@ hence yielding $Q$ as 32, the lower bound for GPU is then
     &M = 33.6\ GB
 \end{align*}
 Hence for the GPU options by Modal, I can then go for the nearest upper GPU which is A100-40GB. This leads to 
-decorating our class as 
+decorating the class below as 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 @app.cls(
         gpu="A100-40GB", 
@@ -3015,7 +3015,7 @@ The time per epoch hours attained is
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
 time : 0.33440 hours per epoch
 \end{lstlisting}
-or to say it another way, 33 minutes. However, one thing is to be noted from ViT benchmarks for the 
+or to say it another way, 20 minutes. However, one thing is to be noted from ViT benchmarks for the 
 {\it ViT-L/16}, the global batch size is 512, meaning for the 8 optimal gpus used, the batch size 
 per gpu then becomes 64, so, runnning another epoch for the now modified batch size of 64 gives 
 the time per epoch of 
@@ -3277,34 +3277,30 @@ operations since they implicitly require synchronization before starting to exec
 Considering the first speedup of ViT training will use this library, {\it mpi4py}, let
 us rewrite the previous implementation of the reduce and broadcast in Python, with 
 no need for explanations as it does the same operations\maincitecount.
-\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 from mpi4py import MPI
 import numpy as np 
 comm = MPI.COMM_WORLD
-size = comm.Get_size()
-rank = comm.Get_rank()
+size, rank = comm.Get_size(), comm.Get_rank()
 if rank == 0:
     data = [39, 72, 129, 42]
 else:
     data = None 
-# simulate sending batches to nodes
 data = comm.scatter(data, root=0)
 print(f"Processor {rank} received {data}")
 comm.Barrier()
-# simulate forward and back pass 
 data = data * 0.5
 print(f"Processor {rank} updated {data:.2f}")
-# reduce 
 resulting_sum = np.array(0.0,dtype=np.float64)
 comm.Reduce(
         np.array(data, dtype=np.float64),
         resulting_sum, op=MPI.SUM, root=0)
 if rank == 0:
     print(f"Processor {rank} sum {resulting_sum:.2f}")
-# broadcast the average
 data = comm.bcast(resulting_sum/size, root=0)
 print(f"Processor {rank} final {data:.2f}")
 \end{lstlisting}
+\vspace*{-2em}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -3489,7 +3485,6 @@ rank 0 final value tensor([35.2500])
 % PAGE 41
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Distributing batches to different GPUs}\\
     This is the time to go back to your cloud GPU platform i.e. RunPod, and spin up 
     an instance of 2 gpus. Based on the number of gpus, I compute the datasets per rank.
@@ -3502,59 +3497,558 @@ def create_data():
       root="./datasets", train=False, transform=transforms, download=True) 
     return (train_data,test_data)
 \end{lstlisting}
-And so, the next thing is to partition the dataset for each gpu (rank). Given I provisioned
-
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+And so, the next thing is to partition the dataset for each gpu (rank). Given I provisioned 
+2 A40 gpus, each with VRAM {48GB}, then to get local batch size of 32, I set the global batch 
+as 64.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+BATCH = 64
+bsz = BATCH // size
+\end{lstlisting}
+ Now with the local batch size, let's split the train and test datasets for each gpu.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+train_data,test_data = create_data()
+fracs = [1.0 / size for _ in range(size)] # [0.5,0.5]
+gen = torch.Generator().manual_seed(SEED)
+train_splits = random_split(train_data, fracs, generator=gen)
+test_splits = random_split(test_data, fracs, generator=gen)
+part_train = train_splits[rank]
+part_test = test_splits[rank]
+\end{lstlisting}
+and so then, I can proceed to create the data loaders for both train and test which 
+is unique to each gpu in the host.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+create_loader=lambda data,batch: DataLoader(data,batch,True)
+part_train_loader = create_loader(part_train, bsz)
+part_test_loader = create_loader(part_test, bsz)
+\end{lstlisting}
+and hence the code above forms the partition dataset implementation\maincitecount.
+Knowing this, running the partition dataset function will only be run on that process which 
+will then pick the partition to be loaded to a specific gpu of id rank. Using the same seed 
+ensures the reproducibility in global and uniqueness in local batches across the device-aware 
+processes.\\  
+The next section hence goes into initializing copies of the model for each rank, then
+training the copies on each data partition before I compute the average of the gradients 
+using the collective communication {\it all\_reduce}\maincitecount.
+\vspace*{-5em}
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
 % \end{itemize}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
+  \scriptsize
+  \sidecitecount\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+def partition_dataset(rank,size):
+    train_data,test_data = create_data()
+    bsz = BATCH // size
+    fracs = [1.0/size for _ in range(size)]
+    gen = torch.Generator().manual_seed(SEED)
+    train_splits = random_split(
+        train_data, fracs, generator=gen)
+    test_splits = random_split(
+        test_data, fracs, generator=gen)
+    p_train = train_splits[rank]
+    p_test = test_splits[rank]
+    ptr_loader = create_loader(p_train, bsz)
+    pts_loader = create_loader(p_test, bsz)
+    return (ptr_loader,pts_loader,bsz)
+\end{lstlisting}
+\vspace{2em}
+\sidecitecount ensure that the backend for the processes is at this point set to {\it nccl}
+for gpu nodes.
 \end{minipage}
 \end{figure}
 % ==================================================
 \pagebreak
 % PAGE 41
 \begin{figure}[!htb]
+\begin{minipage}[t]{0.65\textwidth}
+\customtext{xtitle}{0em}{Army of ViT-L/16's on the GPUs}\\
+Creating a new function for training the army of models, let's first get the device 
+for that rank using 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+device = torch.device(f"cuda:{rank}")
+\end{lstlisting}
+So for each rank, the model is initialized as\maincitecount
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+model = create_model()
+optimizer = torch.optim.SGD(
+    model.parameters(),lr=1e-3,momentum=.9)
+\end{lstlisting}
+Then, getting the number of batches per rank is derived using 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+num_batches = ceil(len(local_train_loader.dataset) // float(bsz))
+\end{lstlisting}
+and so the single gpu training code only now has a single line update to
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+epoch_loss = 0.0
+for i, (images, labels) in enumerate(part_train_loader):
+    images = images.to(device)
+    actual = labels.to(device)
+    optimizer.zero_grad()
+    predicted = model(images)
+    loss = criterion(predicted,actual)
+    epoch_loss += loss.item()
+    loss.backward()
+    average_gradients(model)
+    optimizer.step()
+\end{lstlisting}
+With the great understanding of collective communication as at of now, average gradients 
+takes all gradients computed by {\it loss.backward()}, averages them and broadcasts them,
+all in one using the {\it all\_reduce}.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def average_gradients(model):
+    size = float(dist.get_world_size())
+    for param in model.parameters():
+        dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
+        param.grad.data /= size
+\end{lstlisting}
+With these changes in mind, what speed ups do we get from single A40 GPU training to training 
+on 2 gpus, batch size 32?\maincitecount.
+% test loss: 2.41
+% test acc: 7.82 %
+% local loader len: 391 num btches 390
+% test loss: 2.40
+% test acc: 8.30 %
+% local loader len: 391 num btches 390
+% rank 1 epoch loss: 2.02
+% rank 1 time : 0.17970 hours per epoch
+% device: cuda:1
+% rank 0 epoch loss: 2.02
+% rank 0 time : 0.17958 hours per epoch
+% device: cuda:0
+% test loss: 1.93
+% test acc: 29.56 %
+% test loss: 1.94
+% test acc: 28.16 %
+% rank 1 epoch loss: 1.92
+% rank 1 time : 0.18009 hours per epoch
+% rank 0 epoch loss: 1.92
+% rank 0 time : 0.17953 hours per epoch
+% device: cuda:1
+% device: cuda:0
+% test loss: 1.86
+% test acc: 31.60 %
+% rank 1 gpu NVIDIA A40
+% test loss: 1.89
+% test acc: 30.34 %
+% rank 0 gpu NVIDIA A40
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+    \scriptsize\raggedright
+  \sidecitecount with the {\it create\_model} function being
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+def create_model():
+    vit_l_16 = VisionTransformer(L16Config)
+    vit_l_16 = vit_l_16.to(device)
+    vit_l_16.train()
+    return vit_l_16
+\end{lstlisting}
+\vspace{2em}
+\sidecitecount the complete code for multi-GPU training is at 
+{\scriptsize \url{https://github.com/Marvin-desmond/ScalingViTsAcrossTrainingCompute/blob/main/transformerViT/multi_gpu_train_pipeline.py}}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \customtext{xtitle}{0em}{Training on 2 GPUs}\\
+For the batch size 32, the resulting time per epoch hours begets\maincitecount
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+rank 1 time : 0.20232 hours per epoch
+rank 0 time : 0.20232 hours per epoch
+\end{lstlisting}
+As can be seen, training on the new pipeline reduced the time from {\it 20 minutes}
+to {\it 12 minutes} for the batch size 32, and the time is further reduced to {11 minutes}
+as can be seen below 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+rank 0 time : 0.17932 hours per epoch
+rank 1 time : 0.17929 hours per epoch
+\end{lstlisting}
+for a batch size of 64, still a long way to go. The loss reduces as is expected 
+and after 2 epochs the resulting accuracy is 31\%, up from a random baseline of 
+8\%.\\
+\vspace{0.5em}\\
+\customtext{xtitle}{0em}{Reduced Float Precision Training}\\
+By default, PyTorch initializes weights and biases as 32-bit floating point values.
+Of course, a larger number of bits corresponds to a higher precision, which lowers 
+the chance of errors accumulating during computations. However, in deep learning, 
+because it has been computationally expensive, 32 bits has then been adopted. GPU 
+hardware is also not optimized for 64-bit floating point operations.\\
+Given this, then the earlier training used float32 for the floating point operations.
+Let us then go into lower memory footprint during training by doing reduced float 
+precision training for the model. However, this reduction in precision can be tricky 
+since it might cause underflows and instabilities due to issues such as 
+vanishing or exploding gradients that can occur when using lower-precision arithmetic.
+This then introduces us to two tools, {\it\color{xlink}torch.autocast} whose instance 
+of a context manager runs regions of your script in mixed precision.\\
+In such regions, computation ops on the set device run in a dtype chosen by autocast to 
+improve performance while maintaining accuracy. This dtype would now be float16, 
+with the gradients then computed in float32 for numerical stability. Also, 
+Another tool, {\it\color{xlink}GradScaler} scales gradients to prevent underflowing\maincitecount.
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize
+  \sidecitecount nvtop tool showing the interesting shift from inference to train 
+  for the 2 gpus\\
+  \includegraphics[width=\textwidth,height=6cm]{images/nvtoptrain.png}\\ 
+  \vspace{4em}
+  \sidecitecount forward and backward pass floating point precision changes
+  \includegraphics[width=\textwidth]{images/mixed-training.png} 
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \customtext{xtitle}{0em}{Implementing Mixed precision Training}\\
+    Let's implement {torch.autocast} to reduce floating point ops in the layers 
+    to float16 while maintaining sensitive layers i.e. {\it LayerNorm, loss values} 
+    to float32. With loss values in float32, gradient computation uses higher floating 
+    point values hence better accuracy in convergence.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+with torch.autocast(
+    device_type=device, dtype=torch.float16):
+    predicted = model(images)
+    assert predicted.dtype is torch.float16
+    loss = criterion(predicted,actual)
+    assert loss.dtype is torch.float32
+\end{lstlisting}
+Let's now define the GradScaler to scale the gradients and perform gradient updates 
+conveniently, only doing so when there's no NaN's or infs.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+scaler = torch.amp.GradScaler(device)
+# the above code ... 
+scaler.scale(loss).backward()
+average_gradients(model)
+scaler.step(optimizer)
+scaler.update()
+optimizer.zero_grad()
+\end{lstlisting}
+Time per epoch hours then optimizes this training to 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+rank 0 time : 0.11699 hours per epoch
+rank 1 time : 0.11732 hours per epoch
+\end{lstlisting}
+approximately 7 minutes for the new pipeline.\\
+Note that doing {\it model.half()} trains in 4 minutes but then it comes with instabilities 
+of sensitive layers with loss values and gradient computations being in float16. This results 
+in accuracy after two epochs being $28.94 \%$ versus $32.68\%$ for mixed precision 
+training.\\
+\customtext{xtitle}{0em}{2 H100's over A40's}\\
+Upgrading the gpus from the A40s to the H100s gives me 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+rank 0 time : 0.03912 hours per epoch
+rank 1 time : 0.03906 hours per epoch
+\end{lstlisting}
+which when scaled approximately linearly for 8 gpus, would give $0.00978$ of 
+an hour, closer to the realized time. But the Google benchmarks only use the 
+A100-40GB, so that would be "cheating", but we can take that.
+\vspace*{-3em}
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    
+    \customtext{xtitle}{0em}{Fully Sharded Data Parallel}\\
+    In constrast to data parallelism where model replica is stored in every device process 
+    across the multiple processes, fully sharded data parallelism shards the model parameters,
+    the gradients and optimizer states\maincitecount and scatters them across the gpus. 
+    This mode is used in training the large {ViT-G/14} whose replica cannot be trained on a single
+     GPU and hence needs sharding on many GPUs, offloading GPU memory. Google DeepMond 
+     uses 256 as the global batch meaning the sharded model across the GPU processes use 
+     32 as the local batch size. This package is in {\it\color{xlink}torch.distributed.fsdp}.\\
+    In this mode of parallelism, I should shard the submodules as well as the root model\maincitecount,
+    again noting that the backend should be {\it nccl}. 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+from torch.distributed.fsdp import fully_shard, FSDPModule
+def apply_fsdp():
+    vit_l_16 = VisionTransformer(L16Config)
+    for vit_block in vit_l_16.vit_blocks:
+        fully_shard(vit_block)
+    fully_shard(vit_l_16)
+    assert isinstance(vit_l_16, VisionTransformer)
+    assert isinstance(vit_l_16, FSDPModule)
+    print(vit_l_16)
+
+if __name__ == "__main__":
+    world_size = torch.cuda.device_count()
+    mp.set_start_method("spawn")
+    mp.spawn(fn=init_process, args=(world_size,apply_fsdp), nprocs=world_size, join=True)
+\end{lstlisting}
+Now, on checking the parameters being now sharded, their types change 
+from {\it\color{Maroon}\small Tensor} to {\it\color{Maroon}\small DTensor}\maincitecount.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+    # within apply_fsdp function ...
+    from torch.distributed.tensor import DTensor, Shard
+    param = next(iter(vit_l_16.parameters()))
+    print(type(param))
+\end{lstlisting}
+{\it\color{Maroon}\small DTensor} in this case represents the sharded parameters. Now that
+our model has been sharded, let us develop the training pipeline for FSDP.
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \scriptsize
+  \sidecitecount \href{https://docs.pytorch.org/tutorials/intermediate/FSDP_tutorial.html}{
+    Getting Started with Fully Sharded Data Parallel (FSDP2)}
+   {\it Feng et al. 2022, updated May 2025}\\ 
+   \vspace{2em}\\
+   \sidecitecount the output for the sharded model begets
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+FSDPVisionTransformer(
+    (image_embeddings): ImageEmbeddings(
+        (conv_then_project): Conv2d(3, 1024, kernel_size=(16, 16), stride=(16, 16))
+    )
+    (vit_blocks): Sequential(
+        (0): FSDPViTBlock(
+    ...
+\end{lstlisting}
+\vspace{2em}
+\sidecitecount the output for the type begets
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+<class 'torch.distributed.tensor.DTensor'>
+<class 'torch.distributed.tensor.DTensor'>
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \raggedright
-    \customtext{xtitle}{0em}{lorem ipsum}\\
-        lorem ip
-\begin{lstlisting}[language=bash, style=bash,basicstyle=\ttfamily\footnotesize]
-local batch  32
-local batch  32
-local batch  32
-local batch  32
-# BEFORE TRAINING
-test loss: 2.41
-test acc: 7.82 %
-test loss: 2.40
-test acc: 8.30 %
-# AFTER FIRST EPOCH
-rank 1 epoch loss: 2.01
-rank 1 time : 0.18776 hours per epoch
-device: cuda:1
-rank 0 epoch loss: 2.02
-rank 0 time : 0.18762 hours per epoch
-device: cuda:0
-test loss: 1.94
-test acc: 28.16 %
-test loss: 1.93
-test acc: 29.56 %
-# AFTER SECOND EPOCH
-rank 1 epoch loss: 1.91
-rank 1 time : 0.18795 hours per epoch
-rank 0 epoch loss: 1.91
-rank 0 time : 0.18809 hours per epoch
-test loss: 1.86
-test acc: 31.60 %
-rank 1 gpu NVIDIA A40
-test loss: 1.89
-test acc: 30.34 %
-rank 0 gpu NVIDIA A40
+    \customtext{xtitle}{0em}{Sharded data by way of DistributedSampler}\\
+        DistributedSampler passed to the dataLoader loads onto the given process the data subset 
+        unique to it. Let's understand a bit more on this by building a very simpler data loader.
+        Taking an ideal y for a given x distribution and building a torch dataset, then I have.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+x = torch.arange(10,dtype=torch.float32)
+y = x ** 2 # usually the output is noisy
+data = TensorDataset(x,y)
 \end{lstlisting}
+Printing a subset of our Dataset gives us an idea of what the data looks like. Of course, 
+by now you know it prints three times unless you have a conditional for which process the 
+print whould be in. Given it is still non-unique, all the processes print the same data subset. 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+print(data[:5])
+\end{lstlisting}
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+(tensor([0., 1., 2., 3., 4.]), tensor([ 0.,  1.,  4.,  9., 16.]))
+(tensor([0., 1., 2., 3., 4.]), tensor([ 0.,  1.,  4.,  9., 16.]))
+(tensor([0., 1., 2., 3., 4.]), tensor([ 0.,  1.,  4.,  9., 16.]))
+\end{lstlisting}
+Assuming we have three running processes, then our sampler reflects that in the 
+{\it\color{Maroon}num\_replicas} argument.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+sampler = DistributedSampler(data,rank=rank,num_replicas=size)
+\end{lstlisting}
+And now we can pass our data, sampler and batch size among other processing optimized 
+parameters i.e. number of workers to the {\it\color{xlink}DataLoader}.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+loader = DataLoader(data,sampler=sampler,batch_size=2)
+\end{lstlisting}
+This now gives us each process having 2 batches, each batch having two samples. Think again!
+Total data is ten samples, split three ways, gives four samples per rank, understanding that 
+two values are repeated because we didn't drop the fractional part of the dataset hence rounding 
+up occurs i.e. {\it\color{Maroon} drop\_last} is set to {\it\color{Maroon} False}.
+Printing the two batches per rank will give unique samples, except of course the 
+two repeated ones\maincitecount.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+for x,y in loader:
+    print(f"rank {rank} data : {x = }")
+\end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+\raggedright\scriptsize
+\sidecitecount the result of the simple distributed sampler gives 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+rank 0 data : x = tensor([4., 5.])
+rank 1 data : x = tensor([1., 3.])
+rank 2 data : x = tensor([7., 9.])
+rank 0 data : x = tensor([0., 2.])
+rank 1 data : x = tensor([8., 4.])
+rank 2 data : x = tensor([6., 1.])
+\end{lstlisting}
+I have written this without the multiprocessing part because that has been 
+explored in-depth and you can reproduce three processes for backend {\it gloo}
+for your local cpu workflows.
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{A tiny bit more...}\\
+    One more necessary thing i'd like to add, due to the distributed sampling, shuffling might be a 
+    problem for multiple epochs of training, so a necessary line of code is needed so it always shuffles.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+sampler = DistributedSampler(
+    data,rank=rank,num_replicas=size,shuffle=True
+    )
+loader = DataLoader(data,sampler=sampler,batch_size=2)
+for epoch in range(2):
+    for x,y in loader:
+        if rank == 0:
+            print(f"rank {rank} data : {x = }")
+\end{lstlisting}
+As can be noted, shuffling is set to true but it prints the same data batches for the
+two epochs.\maincitecount Correcting it is done by the code added as can be seen 
+below\maincitecount 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+    for epoch in range(2):
+        sampler.set_epoch(epoch)
+        for x,y in loader:
+# ...
+\end{lstlisting}
+And hence now, the cifar10 pipeline for the fsdp model is concretely implemented using 
+distributed sampling as shown below, with parameters I've gone through
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def partition_dataset(rank,size,batch_size):
+    train_data,test_data = create_data()
+    sampler1 = DistributedSampler(train_data, 
+    rank = rank, num_replicas = size, shuffle = True)
+    sampler2 = DistributedSampler(
+        test_data, 
+        rank = rank, num_replicas = size)
+    train_kwargs = {'batch_size': batch_size, 
+                    'sampler': sampler1}
+    test_kwargs = {'batch_size': batch_size, 
+                    'sampler': sampler2}
+    cuda_kwargs = {'num_workers': 2, 'pin_memory': True, 
+    'shuffle': False}
+    train_kwargs.update(cuda_kwargs)
+    test_kwargs.update(cuda_kwargs)
+    train_loader = create_loader(train_data,train_kwargs)
+    test_loader = create_loader(test_data,test_kwargs)
+    return (
+        train_loader, sampler1, test_loader, sampler2) 
+\end{lstlisting}
+\vspace*{-3em}
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright\scriptsize 
+  \sidecitecount before the shuffling fix, the batches for the two epochs print 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+rank 0 data : x = tensor([4., 5.])
+rank 0 data : x = tensor([0., 2.])
+rank 0 data : x = tensor([4., 5.])
+rank 0 data : x = tensor([0., 2.])
+\end{lstlisting}
+\vspace{2em}
+\sidecitecount adding the line of code now fixes shuffling 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+rank 0 data : x = tensor([4., 5.])
+rank 0 data : x = tensor([0., 2.])
+rank 0 data : x = tensor([5., 2.])
+rank 0 data : x = tensor([9., 4.])
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The train function as always}\\
+The train does not change much actually, apart from the tqdm for progress bar monitoreed
+for the master process, the rest of the code remains the same 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+def train(model, train_loader, test_loader, 
+          optimizer, criterion, bsz, sampler=None):
+    rank, size = dist.get_rank(), dist.get_world_size()
+    EPOCHS = 2
+    for EPOCH in range(EPOCHS):
+        if sampler:
+           sampler.set_epoch(EPOCH)
+        if rank==0:
+            inner_pbar = tqdm(
+             range(len(train_loader)), 
+             colour="blue", desc="r0 Training Epoch")
+        epoch_loss = 0
+        for images,labels in train_loader:
+            images = images.to(rank)
+            labels = labels.to(rank)
+            predicted = model(images)
+            loss = criterion(predicted,labels)
+            epoch_loss += loss.item()
+            if rank==0:
+                inner_pbar.update(1)
+            loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+\end{lstlisting}
+And then finally, the program that stitches every defined function\maincitecount is 
+then developed as shown below, with the batch per rank being 16 for one to train 
+{\it ViT-G/14} on the 8 {\it A100-40GB VRAM}.
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+BATCH=16
+def train_fsdp(rank,size):
+    fsdp_model = apply_fsdp(rank,size)
+    (train_loader, sampler1,test_loader, sampler2
+    ) = partition_dataset(rank,size,BATCH)
+    optimizer = torch.optim.SGD(
+                    fsdp_model.parameters(),lr=1e-3, 
+                    momentum=.9)
+    loss_fn = torch.nn.CrossEntropyLoss().to(rank)
+    train(fsdp_model, train_loader, test_loader, 
+          optimizer, loss_fn, BATCH, sampler1)
+\end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright \scriptsize 
+  \sidecitecount the {\it\color{xlink}apply\_fsdp} is now neatly defined as  
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
+def apply_fsdp(rank,size):
+    """update as needed to G/14 model"""
+    vit_l_16 = VisionTransformer(L16Config)
+    for vit_block in vit_l_16.vit_blocks:
+        fully_shard(vit_block)
+    fully_shard(vit_l_16)
+    return vit_l_16 
+\end{lstlisting}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The Moment: FSDP on Cloud GPUs}\\
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
@@ -3563,6 +4057,24 @@ rank 0 gpu NVIDIA A40
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
   \raggedright
+  \sidecitecount with the
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The train function as always}\\
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \sidecitecount with the
 \end{minipage}
 \end{figure}
 % ==================================================
