@@ -3744,7 +3744,7 @@ approximately 7 minutes for the new pipeline.\\
 Note that doing {\it model.half()} trains in 4 minutes but then it comes with instabilities 
 of sensitive layers with loss values and gradient computations being in float16. This results 
 in accuracy after two epochs being $28.94 \%$ versus $32.68\%$ for mixed precision 
-training.\\
+training.\maincitecount\\
 \customtext{xtitle}{0em}{2 H100's over A40's}\\
 Upgrading the gpus from the A40s to the H100s gives me 
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
@@ -3762,13 +3762,21 @@ A100-40GB, so that would be "cheating", but we can take that.
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
+\scriptsize
+\sidecitecount increasing the number of workers in the data loader to 2 
+shows further time reduction in time per epoch hours to 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\scriptsize]
+rank 0 time : 0.07701 hours per epoch
+rank 1 time : 0.07703 hours per epoch
+\end{lstlisting}
+which then means by linear scaling 8 gpus will be about {\it 0.0192525} of time per epoch 
+hours.
 \end{minipage}
 \end{figure}
 % ==================================================
 \pagebreak
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    
     \customtext{xtitle}{0em}{Fully Sharded Data Parallel}\\
     In constrast to data parallelism where model replica is stored in every device process 
     across the multiple processes, fully sharded data parallelism shards the model parameters,
@@ -4035,11 +4043,11 @@ def train_fsdp(rank,size):
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
 def apply_fsdp(rank,size):
     """update as needed to G/14 model"""
-    vit_l_16 = VisionTransformer(L16Config)
-    for vit_block in vit_l_16.vit_blocks:
+    vit_G_14 = VisionTransformer(G14Config)
+    for vit_block in vit_G_14.vit_blocks:
         fully_shard(vit_block)
-    fully_shard(vit_l_16)
-    return vit_l_16 
+    fully_shard(vit_G_14)
+    return vit_G_14 
 \end{lstlisting}
 \end{minipage}
 \end{figure}
@@ -4047,17 +4055,53 @@ def apply_fsdp(rank,size):
 \pagebreak
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{The Moment: FSDP on Cloud GPUs}\\
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
+    With our readiness to train the largest of the four ViT variants, the two provisioned gpus 
+    (if 48 GB VRAM) breaks beacuse full-precision (float32) training achieves OOM(out-of-memory)
+    for the gpu ram that can be used. Luckily, FSDP offers mixed precision policy with 
+    efficient autocasting to float32 for the gradients and the unstable layers. This can be easily 
+    done as below 
+\begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+transforms = Compose([
+    Resize((224, 224)), ToImage(),
+    ToDtype(torch.bfloat16, scale=True),
+    Normalize(MEAN, STD),])
+# ... 
+from torch.distributed.fsdp import (
+    fully_shard, FSDPModule, MixedPrecisionPolicy)
+def apply_fsdp(rank,size):
+    mp_policy=MixedPrecisionPolicy(
+            param_dtype=torch.bfloat16, cast_forward_inputs=True)
+    vit_G_14 = VisionTransformer(G14Config)
+    for vit_block in vit_G_14.vit_blocks:
+        fully_shard(vit_block,mp_policy=mp_policy)
+    fully_shard(vit_G_14,mp_policy=mp_policy)
+    return vit_G_14
+\end{lstlisting}  
+and hence with these two necessary changes to our code pipeline, the training\maincitecount
+on {2 A40 48GB VRAM GPUs} take 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+rank 0 time : 0.39893 hours per epoch
+rank 1 time : 0.39896 hours per epoch
+\end{lstlisting}
+\customtext{xtitle}{0em}{The Finality: FSDP on 2 H100 GPUs}\\
+And now for our last interesting run, completing phase one of this very interesting 
+article, using 2 gpus for H100 model with about 80GB VRAM each shows 50\% gpu memory 
+utilization for each for local batch size of 32, and 98\% gpu power utilization.
+One epoch of training gets us to about the time per epoch hours being 
+\begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
+
+\end{lstlisting}   
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
 % \end{itemize}
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \sidecitecount with the
+  \raggedright\scriptsize
+  \sidecitecount using {\it nvtop} tool to show both gpu metrics show 80\%
+  usage which is very good with consistent maximum gpu power utilization of 
+  94\% 
+  \includegraphics[width=\textwidth,height=6cm]{images/fsdpG14time0_39893.png}
 \end{minipage}
 \end{figure}
 % ==================================================
