@@ -4072,13 +4072,15 @@ rank 0 time : 0.39893 hours per epoch
 rank 1 time : 0.39896 hours per epoch
 \end{lstlisting}
 \customtext{xtitle}{0em}{FSDP on 2 H100 GPUs}\\
-And now for our last interesting run, completing phase one of this very interesting 
-article, using 2 gpus for H100 model with about 80GB VRAM each shows 50\% gpu memory 
+And now for our last interesting run, completing {\it First Revision} of this very interesting 
+article, using 2 H100 gpus with about 80GB VRAM each shows 50\% gpu memory 
 utilization for each for local batch size of 32, and 98\% gpu power utilization.
 One epoch of training gets us to about the time per epoch hours being 
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
-
-\end{lstlisting}   
+rank 1 time : 0.06849 hours per epoch
+rank 0 time : 0.06826 hours per epoch
+\end{lstlisting}
+which is a very nice training performance, albeit using higher performing GPUs.
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
 % \end{itemize}
 \end{minipage}%
@@ -4095,8 +4097,28 @@ One epoch of training gets us to about the time per epoch hours being
 \pagebreak
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{The train function as always}\\
+    \customtext{xtitle}{0em}{SimpleFSDP}\\
+    As I wrap up this article, or let's call it a beta-book, I'd like to summon 
+    your attention to one interesting article, {\it SimpleFSDP}, where they build 
+    FSDP in PyTorch native and a recommended read to explore, and I quote\\ 
+    \newline
+    {\it  unique torch.compile-friendly implementation of collective communications 
+    using existing PyTorch primitives, namely parametrizations, selective 
+    activation checkpointing, and DTensor. It also 
+    features the first-of-its-kind intermediate representation (IR) nodes 
+    bucketing and reordering in the TorchInductor backend for effective 
+    computation-communication overlapping.}
+    \newline\newline
+    {\it\color{xtitle} users can employ the aforementioned optimizations to automatically or manually wrap
+    model components for minimal communication exposure.}\\
+    \newline\newline
+    \includegraphics[width=0.5\textwidth]{images/niceimage.png}
+    {\it\color{xlink} And thanks to those who made it possible for me to write this awesome article 
+    (beta-book) by exploring open source, loving what they do and always sharing the 
+    next big things on X and r/LocalLLaMA! To all who have been cited and to more who I was not able to,
+    THANKS!}\newline\newline
+    {\it Onto the next season of learning and building and impacting!}
+
 % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 % \end{lstlisting}
 % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
@@ -4104,27 +4126,28 @@ One epoch of training gets us to about the time per epoch hours being
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \sidecitecount with the
+  \raggedright\scriptsize
+  \sidecitecount \href{https://arxiv.org/pdf/2411.00284}{	arXiv:2411.0028}\\
+  {\it SimpleFSDP: Simpler Fully Sharded Data Parallel with torch.compile}\\
+  {\it Zhang et al. 2024}
 \end{minipage}
 \end{figure}
 % ==================================================
-\pagebreak
-\begin{figure}[!htb]
-    \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{The train function as always}\\
-% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-% \end{lstlisting}
-% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
-% \end{itemize}
-\end{minipage}%
-\hspace{25pt}
-\begin{minipage}[t]{.4\textwidth}
-  \raggedright
-  \sidecitecount with the
-\end{minipage}
-\end{figure}
+% \pagebreak
+% \begin{figure}[!htb]
+%     \begin{minipage}[t]{0.65\textwidth}
+%     \raggedright
+%     \customtext{xtitle}{0em}{The train function as always}\\
+% % \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% % \end{lstlisting}
+% % \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% % \end{itemize}
+% \end{minipage}%
+% \hspace{25pt}
+% \begin{minipage}[t]{.4\textwidth}
+%   \raggedright\scriptsize
+% \end{minipage}
+% \end{figure}
 % ==================================================
 \end{document}
 
