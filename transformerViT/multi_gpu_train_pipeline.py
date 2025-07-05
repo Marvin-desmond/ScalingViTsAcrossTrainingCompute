@@ -4,6 +4,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp 
 from torch.utils.data import DataLoader, Subset, random_split 
 from random import Random 
+from torch.distributed.fsdp import fully_shard, FSDPModule 
 
 import subprocess
 
@@ -79,7 +80,7 @@ def test_metrics(model, loader, criterion, device="cuda"):
   print(f"test loss: {running_loss / len(loader):.2f}")
   print(f"test acc: {(100 * running_acc / total):.2f} %")
 
-def create_model():
+def create_model(device):
     vit_l_16 = VisionTransformer(L16Config)
     vit_l_16 = vit_l_16.to(device)
     vit_l_16.train()
@@ -96,7 +97,12 @@ from math import ceil
 EPOCHS = 2
 def train_single_epoch(rank,size,local_train_loader,local_test_loader,bsz):
     device = torch.device(f"cuda:{rank}")
-    model = create_model()
+    model = create_model(device)
+    # SHARD
+    for layer in model.layers:
+        fully_shard(layer)
+    fully_shard(model)
+    # END SHARD
     optimizer = torch.optim.SGD(model.parameters(),lr=1e-3,momentum=.9)
     criterion = torch.nn.CrossEntropyLoss()
     test_metrics(model,local_test_loader,criterion,device)
