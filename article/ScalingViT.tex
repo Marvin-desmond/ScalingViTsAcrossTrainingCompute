@@ -3542,7 +3542,7 @@ for gpu nodes.
 \end{figure}
 % ==================================================
 \pagebreak
-% PAGE 41
+% PAGE 42
 \begin{figure}[!htb]
 \begin{minipage}[t]{0.65\textwidth}
 \customtext{xtitle}{0em}{Army of ViT-L/16's on the GPUs}\\
@@ -3638,6 +3638,7 @@ def create_model():
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 43
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \customtext{xtitle}{0em}{Training on 2 GPUs}\\
@@ -3692,6 +3693,7 @@ Another tool, {\it\color{xlink}GradScaler} scales gradients to prevent underflow
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 44
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \customtext{xtitle}{0em}{Implementing Mixed precision Training}\\
@@ -3758,6 +3760,7 @@ hours.
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 45
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
     \customtext{xtitle}{0em}{Fully Sharded Data Parallel}\\
@@ -3828,9 +3831,9 @@ FSDPVisionTransformer(
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 46
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Sharded data by way of DistributedSampler}\\
         DistributedSampler passed to the dataLoader loads onto the given process the data subset 
         unique to it. Let's understand a bit more on this by building a very simpler data loader.
@@ -3893,9 +3896,9 @@ for your local cpu workflows.
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 47
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{A tiny bit more...}\\
     One more necessary thing i'd like to add, due to the distributed sampling, shuffling might be a 
     problem for multiple epochs of training, so a necessary line of code is needed so it always shuffles.
@@ -3910,7 +3913,7 @@ for epoch in range(2):
             print(f"rank {rank} data : {x = }")
 \end{lstlisting}
 As can be noted, shuffling is set to true but it prints the same data batches for the
-two epochs.\maincitecount Correcting it is done by the code added as can be seen 
+two epochs\maincitecount. Correcting it is done by the code added as can be seen 
 below\maincitecount 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
     for epoch in range(2):
@@ -3969,9 +3972,9 @@ rank 0 data : x = tensor([9., 4.])
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 48
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{The train function as always}\\
 The train does not change much actually, apart from the tqdm for progress bar monitoreed
 for the master process, the rest of the code remains the same 
@@ -4036,9 +4039,10 @@ def apply_fsdp(rank,size):
 \end{figure}
 % ==================================================
 \pagebreak
+% PAGE 49
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \customtext{xtitle}{0em}{The Moment: FSDP on Cloud GPUs}\\
+    \customtext{xtitle}{0em}{FSDP on Cloud GPUs}\\
     With our readiness to train the largest of the four ViT variants, the two provisioned gpus 
     (if 48 GB VRAM) breaks beacuse full-precision (float32) training achieves OOM(out-of-memory)
     for the gpu ram that can be used. Luckily, FSDP offers mixed precision policy with 
@@ -4061,13 +4065,13 @@ def apply_fsdp(rank,size):
     fully_shard(vit_G_14,mp_policy=mp_policy)
     return vit_G_14
 \end{lstlisting}  
-and hence with these two necessary changes to our code pipeline, the training\maincitecount
-on {2 A40 48GB VRAM GPUs} take 
+and hence with these two necessary changes to our code pipeline, the 
+training\maincitecount\ on {2 A40 48GB VRAM GPUs} take 
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
 rank 0 time : 0.39893 hours per epoch
 rank 1 time : 0.39896 hours per epoch
 \end{lstlisting}
-\customtext{xtitle}{0em}{The Finality: FSDP on 2 H100 GPUs}\\
+\customtext{xtitle}{0em}{FSDP on 2 H100 GPUs}\\
 And now for our last interesting run, completing phase one of this very interesting 
 article, using 2 gpus for H100 model with about 80GB VRAM each shows 50\% gpu memory 
 utilization for each for local batch size of 32, and 98\% gpu power utilization.
