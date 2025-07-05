@@ -1520,8 +1520,7 @@ light cloud computes that effectively run inference pipelines.\\
 % PAGE 16
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{First shot at inference}\\
+\customtext{xtitle}{0em}{First shot at inference}\\
 As much as I would want to look for the cloud instance on AWS with the highest
 GPU VRAM and spawn it, ssh to it then copy the inference files and folders to the remote instance 
 before running the pipeline, and then worrying about destroying the instance before the expenses
@@ -1578,7 +1577,6 @@ def func():
 % PAGE 17
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
 the local entry point will now change from 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 if __name__ == "__main__":
@@ -1664,7 +1662,6 @@ Wed May 28 20:41:22 2025
 % PAGE 18
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Configuring the pipeline for GPU inference}\\
 Now that I have a good enough understanding of Modal, let's configure the file
 {\it \small local\_inference.py} for remote compute.\\
@@ -1825,7 +1822,6 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 % PAGE 20
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     {\sffamily 
     \fontsize{16}{8}\textcolor{xtitle}{\textit{From Transformers To Vision Transformers}}}\\
     \customtext{xtitle}{0em}{Revealing The Motivation}\\
@@ -1882,7 +1878,6 @@ This is a very interesting and inspiring story. It is the story of a young girl 
 % PAGE 21
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Dumbing down Llama2 to base ViT}\\
 First looking at the inner most part of Llama2, the Scaled Dot Product Attention, the rotary 
 positional embedding to the queries and keys is removed and instead the GPT-2 absolute positional 
@@ -2218,7 +2213,6 @@ def showPatches(patches, N, P):
 % PAGE 24
 \begin{figure}[!htb]
 \begin{minipage}[t]{0.65\textwidth}
-\raggedright
 \customtext{xtitle}{0em}{The next big thing, einops\maincitecount}\\
 This library greatly simplifies a lot of incredible operations, and is 
 greatly used even in simplifying high dimensional matrix-multiplication 
@@ -2409,7 +2403,7 @@ By simplifying their learning embedding from the advanced 2D-aware position
 embedding due to no significant performance, the paper uses 1D position embeddings
 defined by {\small $E_{pos}\in R^{(N+1)\times D}$}.
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
-position_embeddings = nn.Parameter(
+pos_embeddings = nn.Parameter(
     torch.randn(1,N+1,dim))
 \end{lstlisting}
 which is then added to the augmented patch embeddings
@@ -2433,7 +2427,6 @@ which is then added to the augmented patch embeddings
 % PAGE 26
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
 x += pos_embeddings[:,(N+1)]
 \end{lstlisting}
@@ -2489,8 +2482,7 @@ class MultiHeadAttention(nn.Module):
 \pagebreak
 % PAGE 27
 \begin{figure}[!htb]
-    \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
+\begin{minipage}[t]{0.65\textwidth}
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
     # ...
     def forward(self,x):
@@ -2637,7 +2629,6 @@ class VisionTransformer(nn.Module):
 % PAGE 29
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright 
     \customtext{xtitle}{0em}{Inferencing using ViT-B/16}\\
     The specific model {\it ViT-B/16} is named so because it uses a patch size of 16 and is 
     the base variant of ViT from those implemented in the paper, all base variants having 
@@ -2724,16 +2715,15 @@ the result of the inference gives
 % PAGE 30
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
-    \customtext{xtitle}{0em}{The Four Variants of the "Optimization Apocalypse"}\\
+    \customtext{xtitle}{0em}{The Four Variants of the "Optimization Ultimatum"}\\
     Revisiting the original {\it Vision Transformers} paper, I see that {\it\small ViT-L16} 
     can be grouped as a large variant with patch size $16$, and {\it\small ViT-H14} 
     can be put in the huge variant with patch size $14$. Image size is $224$ pixels for the 
-    experiments done in the paper hence we'll hold on that for the rest of the article 
+    experiments done in the paper hence I'll hold on that for the rest of the article 
     section.\\The variants {\it \small ViT-g14} and {\it \small ViT-G14} are from the next 
     paper \sidecite{48} and are scaled versions of the earlier models trained to benchmark 
     performance during scaling under different conditions. The summary for the models are then 
-    thus ({\it as extracted from Table 1 and 2 of the respective papers})
+    thus ({\it as extracted from Table 1 and 2 of the respective papers})\\
     {\footnotesize\begin{tabular}{cccccc} 
         \toprule
         \textbf{Type/Patch} & \textbf{Depth (Layers)} & \textbf{Dimensions $D$} & \textbf{Intermediate MLP Size} & \textbf{Heads} & \textbf{Params} \\
@@ -2788,7 +2778,6 @@ the result of the inference gives
 % PAGE 31
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{The naive data pipeline}\\
     The benchmarking of the {\it ViT} variants by Google DeepMind from the naive pipeline then 
     scales it to data parallel pipeline using PyTorch's {\it Distributed Data Parallel} for models 
@@ -2801,7 +2790,7 @@ the result of the inference gives
     Let's now start on building the naive pipeline and use the time in hours per epoch for how much 
     speed improvement I get during optimization even in the model graph using {\it torch.compile} and 
     float precision reduction in the computations.\\
-    \vspace{1em}
+    \vspace{1em}\\
     \customtext{xtitle}{0em}{Everything starts with cifar10\maincitecount dataset}\\
     This dataset is infamous for scaling of models, and awesome papers such as one 
     by Keller Jordan\maincitecount, shows how much still can be explored based on it.
@@ -2829,6 +2818,7 @@ The batch will be scaled as per the training limits as from the table in the git
 optimization docs, but for now, let's consider {\it \color{xlink} Yann Lecun}'s\\
 \centering
 {\it \small Friends don't let friends use mini-batches larger than 32}
+\vspace*{-3em}\\
 \end{minipage}%
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -4102,6 +4092,23 @@ One epoch of training gets us to about the time per epoch hours being
   usage which is very good with consistent maximum gpu power utilization of 
   94\% 
   \includegraphics[width=\textwidth,height=6cm]{images/fsdpG14time0_39893.png}
+\end{minipage}
+\end{figure}
+% ==================================================
+\pagebreak
+\begin{figure}[!htb]
+    \begin{minipage}[t]{0.65\textwidth}
+    \raggedright
+    \customtext{xtitle}{0em}{The train function as always}\\
+% \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\footnotesize]
+% \end{lstlisting}
+% \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
+% \end{itemize}
+\end{minipage}%
+\hspace{25pt}
+\begin{minipage}[t]{.4\textwidth}
+  \raggedright
+  \sidecitecount with the
 \end{minipage}
 \end{figure}
 % ==================================================
