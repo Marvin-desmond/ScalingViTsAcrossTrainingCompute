@@ -182,7 +182,7 @@
     models toppling leaderboards every coming week, and copyright lawsuits enriching the lawyers in the same way that AI ideas 
     could be well thought out as a well pipelined autocomplete service driving some startups.\\ 
     % Too bad {\it Plankton} lives under the sea!\\
-    This article is a no exception, {\it thanks Transformers!}, written from the curiosity that inspires I to 
+    This article is a no exception, {\it thanks Transformers!}, written from the curiosity that inspires me to 
     sit on the shoulders of giants, intellectually speaking, and start off this chain of optimization across languages and hardware 
     stack that only climaxes limited to the largest GPU compute I can access without feeling like I have leaked my AWS cloud keys 
     to the best crypto miners in the east continents!
@@ -300,7 +300,7 @@ print(sentence_gotten)
 \textbf{\textit{\small Note}} that the above implementation of tokenization is to help you understand a baseline of what happens 
 under the hood in conversion of what models cannot deal with, strings, to a format that can be computationally 
 crunched.\\
-Hoever, when looking into the Transformers model architecture as outlined in the paper\sidecite{1}, also in{\maincitecount}
+However, when looking into the Transformers model architecture as outlined in the paper\sidecite{1}, also in{\maincitecount}
 for convenience, it is seen that the first block is an Embedding block.\\
 \customtext{xtitle}{1em}{What about the Embeddings block?}\\
 Well, the vector of integers as input in itself cannot capture rich latent representations of the input tokens, 
@@ -326,7 +326,7 @@ and the embedding dimensions, \bandi{D}, being 3072.
       \includegraphics[width=\textwidth]{images/transformers.png}\\
       \vspace{2em}
       {\sidecitecount} {\it nn.Embedding} is just {\it nn.Linear} but only that {\it nn.Embedding} simplifies retrieving rows from its weights 
-      such that you don't pass it one hot vectors but just indeces basically same as the position of the single {\it 1s} in the 
+      such that you don't pass it one hot vectors but just indices basically same as the position of the single {\it 1s} in the 
       one-hot vector you would have passed to {\it nn.Linear}
     \end{minipage}
 \end{figure}
@@ -1408,10 +1408,10 @@ With the above nice input-output mapping translating to code as
 class TransformerBlock(nn.Module):
     def __init__(self,d_in,d_out,n_heads,context_window,device="cpu"):
         super(TransformerBlock,self).__init__()
-        self.rms_attn = RMSNorm(d_in,device=device)
-        self.attn = MHAandRoPE(d_in,d_out,n_heads,context_window,device=device)
-        self.rms_ffn = RMSNorm(d_in,device=device)
-        self.ffn = FeedForward(d_in,4*d_in,device=device)
+        self.rms_attn = RMSNorm(d_in)
+        self.attn = MHAandRoPE(d_in,d_out,n_heads,context_window)
+        self.rms_ffn = RMSNorm(d_in)
+        self.ffn = FeedForward(d_in,4*d_in)
         
     def forward(self, x, m_thetas):
         attn_x = self.rms_attn(x)
@@ -1465,7 +1465,7 @@ class CONFIG:
     N_HEADS: int = 32
     N_LAYERS: int = 32
     HIDDEN_DIM: int = 11008
-    DTYPE: torch.dtype = torch.bfloat16 
+    DTYPE: torch.dtype = torch.float32
 \end{lstlisting}
 \end{minipage}
 \hspace{10pt}
@@ -1477,25 +1477,24 @@ class TransformerLlama2(nn.Module):
     def __init__(self, CONFIG: CONFIG, device="cpu"):
         super(TransformerLlama2,self).__init__()
         self.token_embeddings = nn.Embedding(
-            CONFIG.VOCAB, CONFIG.DIM,
-            device=device)
+            CONFIG.VOCAB, CONFIG.DIM)
         self.layers = nn.ModuleList()
         for _ in range(CONFIG.N_LAYERS):
             self.layers.append(
                 TransformerBlock(
                     CONFIG.DIM, CONFIG.DIM, 
                     CONFIG.N_HEADS, CONFIG.CONTEXT_LEN, 
-                    device=device))
+                    ))
         self.norm = RMSNorm(CONFIG.DIM, device=device)
         self.output = nn.Linear(
                         CONFIG.DIM,CONFIG.VOCAB,
-                        bias=False, device=device
+                        bias=False
                         )
         self.m_thetas = precompute_freqs_cis(
                 CONFIG.DIM//CONFIG.N_HEADS,
                 CONFIG.CONTEXT_LEN*2,
-                device=device
             )
+
     def forward(self,x):
         batch, seq_len = x.shape
         x = self.token_embeddings(x)
