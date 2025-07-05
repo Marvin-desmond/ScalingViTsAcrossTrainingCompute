@@ -2847,7 +2847,6 @@ optimization docs, but for now, let's consider {\it \color{xlink} Yann Lecun}'s\
 % PAGE 32
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     Now that I know the batch size to use, let's implement the iterable for batched data 
     processing 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
@@ -2868,7 +2867,7 @@ vit_l_16.train()
 Next, let's define the optimizer that updates the weights with respect to the gradients computed and 
 the cross entropy\maincitecount\ loss function, the one for which invoking backward propagation 
 computes the needed gradients. I explain a lot more about gradient computation and backpropagation in 
-this course \maincitecount and specifically the section for which the link directs. 
+this course\maincitecount\ and specifically the section for which the link directs. 
 \begin{lstlisting}[language=python,style=python,basicstyle=\ttfamily\scriptsize]
 optimizer = torch.optim.SGD(
     vit_l_16.parameters(),lr=1e-3,momentum=.9)
@@ -2918,13 +2917,12 @@ onto training for a single epoch and computing the time per epoch hours, then
 % PAGE 33
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Time in Hours per Epoch: Part One}\\
     The metric of priority is time in hours per epoch. Considering batch 
     size of 32 for a start, trying to run this on the {\it T4} free GPU tier 
     of 16GB VRAM in Google Colab crashes since training requires more memory 
     than the available VRAM, so, the options to not run out of memory involve: 
-    \begin{itemize}[left=0pt,topsep=0pt,itemsep=-1ex,parsep=0ex]
+    \begin{itemize}[left=0pt,topsep=0pt,itemsep=0ex,parsep=0ex]
         \item reduce the batch size, training will run but with no speed improvement, 
         and I need to reduce it.
         \item mixed-precision training, trains some layers, i.e. convolution layers 
@@ -2968,8 +2966,7 @@ always use your normal computer via the terminal and not by using Graphical Inte
     \sidecitecount \href{https://docs.pytorch.org/torchtune/0.4/tutorials/lora_finetune.html}{
         Fine-Tuning Llama2 with LoRA}\\
     \vspace{2em}
-    \sidecitecount Well, you could use graphical interfaces, but by port forwarding, and that 
-    is beyond the scope of this article.
+    \sidecitecount Well, you could use graphical interfaces, and that is by port forwarding.
 \end{minipage}
 \end{figure}
 % ==================================================
@@ -2977,7 +2974,6 @@ always use your normal computer via the terminal and not by using Graphical Inte
 % PAGE 34
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Spawn a GPU Compute in RunPod}\\
     The cited article\maincitecount goes into generating an ssh key, setting up the public key 
     in the platform, then ssh-ing into the spawned remote compute. I'd recommend two great tools 
@@ -2997,7 +2993,7 @@ always use your normal computer via the terminal and not by using Graphical Inte
     Runpod gives us this compute for \$0.4/hour, a nice option considering other options like 
     \url{Vast.ai} gives us the same for \$0.471/hour, not much difference for small training, but 
     considering days of training, becomes a significant diference.
-    After moving all necessary files\maincitecount to the spawned remote compute using the command 
+    After moving all necessary files\maincitecount\ to the spawned remote compute using the command 
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
 scp -P $PORT {core_utils,train_official}.py root@$IP:/root/ 
 \end{lstlisting}
@@ -3042,10 +3038,9 @@ time : 0.00722251 hours per epoch
 % PAGE 35
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Message Passing Interface (MPI)}\\
     As adapted from the book, Programming Massively Parallel Processors\maincitecount, a MPI is\\
-    \vspace{1em}
+    \vspace{0.4em}\\
     {\it \small a programming interface in which computing nodes in a cluster do not share memory.
     This memory isolation strategy hence dictates that all data sharing and interaction within must 
     be done through explicit message passing, as common in High Performance Computing(HPC).
@@ -3053,7 +3048,7 @@ time : 0.00722251 hours per epoch
     more than 100,000 nodes. Due to this high number of nodes and lack of shared memory, the 
     amount of effort then that is needed to port an application into MPI can be quite high 
     across computing nodes.}\\
-    \vspace{1em}
+    \vspace{0.4em}\\
     This tool is commonly implemented in C, with its Python ported version\maincitecount\ to be 
     used by high-level compute developers. PyTorch implements all this in Data Distributed Parallel 
     which has been tuned for multi-GPU hence is much much faster, one that is part of this article 
@@ -3081,7 +3076,8 @@ thus when compiled gives
 \begin{lstlisting}[language=bash,style=bash,basicstyle=\ttfamily\footnotesize]
 > mpicc -o hello_mpi hello_mpi.c && ./hello_mpi
 Hello world from processor Marvins-MacBook-Pro-4.local out of 1 processor
-\end{lstlisting}    
+\end{lstlisting}
+\vspace*{-3em}
 \end{minipage}
 \hspace{25pt}
 \begin{minipage}[t]{.4\textwidth}
@@ -3175,7 +3171,6 @@ process sends the local gradient to the master node.
 % PAGE 37
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Simple Reduce and Broadcast}\\
     Right before the line {\it \color{xlink} MPI\_Finalize()}, consider that as the starting
     point. Assuming each process involves computation that simulates the gpu computation of 
@@ -3246,7 +3241,6 @@ Rank 0: rbuf[3] = 21
 % PAGE 38
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     Now let's broadcast the resulting average value, signifying the computed global 
      gradients, to all the processes (nodes)\maincitecount.
 \begin{lstlisting}[language=c,style=c,basicstyle=\ttfamily\footnotesize]
@@ -3262,7 +3256,7 @@ Rank 0: rbuf[3] = 21
 \end{lstlisting}
 We actually don't need {\it \color{xsocial}MPI\_Barrier} before the collective 
 operations since they implicitly require synchronization before starting to execute.\\
-\vspace{1em}
+\vspace{1em}\\
 \customtext{xtitle}{0em}{MPI in Python}\\
 Considering the first speedup of ViT training will use this library, {\it mpi4py}, let
 us rewrite the previous implementation of the reduce and broadcast in Python, with 
@@ -3395,7 +3389,6 @@ def init_process(rank,size,fn,backend="gloo"):
 % PAGE 40
 \begin{figure}[!htb]
     \begin{minipage}[t]{0.65\textwidth}
-    \raggedright
     \customtext{xtitle}{0em}{Spawning processes using torch.multiprocessing}\\
     With the communication between processes defined, spawning 4 processes is then 
     done with \maincitecount
