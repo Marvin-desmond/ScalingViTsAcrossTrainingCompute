@@ -63,7 +63,7 @@ class MHAandRoPE(nn.Module):
         mask = torch.triu(torch.ones(context_window, context_window,device=device), diagonal=1)
         self.register_buffer("mask", mask)
         
-    def __call__(self, x, m_theta_polar_tensor):
+    def forward(self, x, m_theta_polar_tensor):
         assert len(x.shape) == 3, "batch of embedding sequence expected"
         batch, seq_len, d_in = x.shape
         Q = self.Wq(x) # batch * seq_len * d_out
