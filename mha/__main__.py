@@ -43,7 +43,7 @@ class ScaledDotProductAttention():
         self.Wv = np.random.randn(d_in, d_out)
         self.Wout = np.random.randn(d_out, d_out)
         
-    def __call__(self, x):
+    def forward(self, x):
         import numpy.ma as ma 
         assert len(x.shape) == 3, "batch of embedding sequence expected"
         batch, seq_len, d_in = x.shape
